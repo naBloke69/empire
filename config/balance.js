@@ -2,247 +2,317 @@ export const BALANCE = {
   tickIntervalMs: 1000,
   maxOfflineSeconds: 86400,
   quickModeMultiplier: 2,
-  fatiguePerMarch: 0.08,
-  maxFatigue: 0.4,
 
-  startingResources: {
-    wood: 550,
-    stone: 450,
-    food: 650,
-    gold: 350
-  },
-
-  startingReserve: {
-    wood: 120,
-    stone: 100,
-    food: 180,
-    gold: 80
-  },
-
-  startingTroops: {
-    melee: 30,
-    ranged: 24,
-    siege: 6
-  },
-
-  specializations: {
-    balanced: {
-      name: 'Универсальный центр',
-      prodMult: 1.1,
-      defMult: 1.1,
-      trainMult: 1.0
+  realms: {
+    great_empire: {
+      id: 'great_empire',
+      name: 'Великая империя',
+      groundTop: '#3e6b34',
+      groundBottom: '#2b4d24',
+      accent: '#6ab04c'
     },
-    granary: {
-      name: 'Житница королевства',
-      prodMult: 1.0,
-      foodMult: 1.3,
-      defMult: 1.0,
-      trainMult: 1.0
+    burning_sands: {
+      id: 'burning_sands',
+      name: 'Пылающие пески',
+      groundTop: '#c29b57',
+      groundBottom: '#997438',
+      accent: '#f0932b'
     },
-    war_hub: {
-      name: 'Военный форпост',
-      prodMult: 1.0,
-      defMult: 1.05,
-      trainMult: 1.25,
-      atkMult: 1.15
+    everwinter: {
+      id: 'everwinter',
+      name: 'Вечный холод',
+      groundTop: '#9cb8c9',
+      groundBottom: '#6f8ea1',
+      accent: '#7ed6df'
+    },
+    fire_peaks: {
+      id: 'fire_peaks',
+      name: 'Огненные вершины',
+      groundTop: '#59332e',
+      groundBottom: '#361d1a',
+      accent: '#eb4d4b'
     }
   },
 
-  buildPresets: {
-    eco: {
-      name: 'Пресет: Экономика',
-      priority: ['farm', 'sawmill', 'quarry', 'keep', 'wall', 'barracks']
+  startingResources: {
+    wood: 650,
+    stone: 550,
+    food: 750,
+    gold: 480,
+    rubies: 120
+  },
+
+  startingTroops: {
+    maceman: 28,
+    crossbow: 22,
+    knight: 10
+  },
+
+  startingTools: {
+    ladder: 12,
+    ram: 6,
+    mantlet: 8
+  },
+
+  buildings: {
+    keep: {
+      name: 'Цитадель',
+      desc: 'Центр замка: открывает волны атаки и увеличивает склад.',
+      baseCost: { wood: 140, stone: 130, gold: 90 },
+      baseTimeSec: 10,
+      costScale: 1.45,
+      storageBonus: 450,
+      orderBonus: 15
     },
-    war: {
-      name: 'Пресет: Армия и осада',
-      priority: ['barracks', 'keep', 'wall', 'farm', 'sawmill', 'quarry']
+    wall: {
+      name: 'Стены и ров',
+      desc: 'Защита флангов и ворот замка при обороне.',
+      baseCost: { wood: 90, stone: 140, gold: 60 },
+      baseTimeSec: 9,
+      costScale: 1.4,
+      defenseBonusPerLvl: 0.18,
+      orderBonus: 10
+    },
+    barracks: {
+      name: 'Казармы',
+      desc: 'Найм булавщиков, арбалетчиков и рыцарей.',
+      baseCost: { wood: 100, stone: 85, gold: 70 },
+      baseTimeSec: 8,
+      costScale: 1.38,
+      trainSpeedPerLvl: 0.12
+    },
+    workshop: {
+      name: 'Осадная мастерская',
+      desc: 'Производство лестниц, таранов и щитов для штурма стен.',
+      baseCost: { wood: 110, stone: 75, gold: 65 },
+      baseTimeSec: 8,
+      costScale: 1.38
+    },
+    farm: {
+      name: 'Ферма и мельница',
+      desc: 'Производство еды для содержания армии.',
+      baseCost: { wood: 75, stone: 45, gold: 25 },
+      baseTimeSec: 7,
+      costScale: 1.34,
+      foodPerMin: 32,
+      foodCapBonus: 260
+    },
+    sawmill: {
+      name: 'Лесопилка',
+      desc: 'Добыча древесины для построек и орудий.',
+      baseCost: { wood: 55, stone: 55, gold: 25 },
+      baseTimeSec: 7,
+      costScale: 1.34,
+      woodPerMin: 26
+    },
+    quarry: {
+      name: 'Каменоломня',
+      desc: 'Добыча камня для укреплений и цитадели.',
+      baseCost: { wood: 75, stone: 45, gold: 30 },
+      baseTimeSec: 8,
+      costScale: 1.34,
+      stonePerMin: 24
+    },
+    tavern: {
+      name: 'Таверна и декор',
+      desc: 'Повышает общественный порядок и открывает шпионов.',
+      baseCost: { wood: 80, stone: 70, gold: 95 },
+      baseTimeSec: 8,
+      costScale: 1.36,
+      orderBonus: 45
+    }
+  },
+
+  units: {
+    maceman: {
+      name: 'Булавщик',
+      role: 'Ближний бой',
+      cost: { gold: 14, food: 8 },
+      trainSec: 3,
+      upkeepFoodPerMin: 0.45,
+      attack: 16,
+      defense: 14
+    },
+    crossbow: {
+      name: 'Арбалетчик',
+      role: 'Дальний бой',
+      cost: { gold: 18, food: 9 },
+      trainSec: 4,
+      upkeepFoodPerMin: 0.55,
+      attack: 21,
+      defense: 11
+    },
+    knight: {
+      name: 'Рыцарь',
+      role: 'Элита штурма',
+      cost: { gold: 34, food: 15 },
+      trainSec: 6,
+      upkeepFoodPerMin: 0.95,
+      attack: 34,
+      defense: 28
+    }
+  },
+
+  tools: {
+    ladder: {
+      name: 'Штурм. лестница',
+      desc: 'Срезает бонус защиты стен на флангах',
+      cost: { wood: 18, stone: 6 },
+      wallNegate: 0.08
+    },
+    ram: {
+      name: 'Таран',
+      desc: 'Пробивает ворота по центру',
+      cost: { wood: 24, stone: 12 },
+      gateNegate: 0.12
+    },
+    mantlet: {
+      name: 'Осадный щит',
+      desc: 'Снижает урон вражеских стрелков',
+      cost: { wood: 20, gold: 10 },
+      rangedReduce: 0.07
     }
   },
 
   commanders: [
     {
-      id: 'cmd_vanguard',
-      name: 'Капитан Торн',
-      perkName: 'Быстрый авангард',
-      perkDesc: '+20% скорость марша, +15% урон по секторам',
-      marchSpeedMult: 1.2,
-      atkMult: 1.15,
-      siegeMult: 1.1
+      id: 'cmd_aldric',
+      name: 'Маршал Альдрик',
+      perk: '+22% скорость марша, +15% атака флангов',
+      marchSpeedMult: 1.22,
+      flankAtkMult: 1.15,
+      centerAtkMult: 1.05
     },
     {
-      id: 'cmd_siege',
-      name: 'Инженер Марта',
-      perkName: 'Осадный расчёт',
-      perkDesc: '+35% бонус осадных машин',
+      id: 'cmd_helga',
+      name: 'Осадница Хельга',
+      perk: '+30% эффективность орудий и прорыв центра',
       marchSpeedMult: 1.0,
-      atkMult: 1.08,
-      siegeMult: 1.35
+      flankAtkMult: 1.06,
+      centerAtkMult: 1.24
     }
   ],
 
   castellans: [
     {
-      id: 'cast_ironwall',
-      name: 'Кастелян Брам',
-      perkName: 'Железный вал',
-      perkDesc: '+25% к обороне стен и флангов',
-      defMult: 1.25
+      id: 'cast_roland',
+      name: 'Кастелян Роланд',
+      perk: '+25% защита стен и ворот',
+      wallDefMult: 1.25,
+      prodMult: 1.0
     },
     {
-      id: 'cast_steward',
-      name: 'Управляющая Лира',
-      perkName: 'Бережный амбар',
-      perkDesc: '+20% к добыче ресурсов',
-      defMult: 1.08,
-      prodMult: 1.2
+      id: 'cast_mira',
+      name: 'Наместница Мира',
+      perk: '+20% добыча ресурсов и +25 порядок',
+      wallDefMult: 1.05,
+      prodMult: 1.2,
+      orderFlat: 25
     }
   ],
 
-  buildings: {
-    keep: {
-      name: 'Цитадель',
-      baseCost: { wood: 120, stone: 100, gold: 80 },
-      baseTimeSec: 10,
-      costScale: 1.42,
-      foodCapBonus: 220,
-      storageBonus: 320
-    },
-    farm: {
-      name: 'Ферма',
-      baseCost: { wood: 70, stone: 40, gold: 20 },
-      baseTimeSec: 7,
-      costScale: 1.35,
-      foodPerMin: 26,
-      foodCapBonus: 200
-    },
-    sawmill: {
-      name: 'Лесопилка',
-      baseCost: { wood: 50, stone: 50, gold: 20 },
-      baseTimeSec: 7,
-      costScale: 1.35,
-      woodPerMin: 22
-    },
-    quarry: {
-      name: 'Каменоломня',
-      baseCost: { wood: 70, stone: 40, gold: 25 },
-      baseTimeSec: 8,
-      costScale: 1.35,
-      stonePerMin: 20
-    },
-    barracks: {
-      name: 'Казармы',
-      baseCost: { wood: 90, stone: 80, gold: 60 },
-      baseTimeSec: 9,
-      costScale: 1.38,
-      trainSpeedBonusPerLvl: 0.12
-    },
-    wall: {
-      name: 'Стены и ворота',
-      baseCost: { wood: 80, stone: 120, gold: 50 },
-      baseTimeSec: 9,
-      costScale: 1.38,
-      defenseBonusPerLvl: 0.15
-    }
-  },
-
-  units: {
-    melee: {
-      name: 'Мечники',
-      cost: { wood: 15, gold: 12, food: 10 },
-      trainSec: 3,
-      upkeepFoodPerMin: 0.55,
-      attack: 15,
-      defense: 17,
-      marchSecPerTile: 3
-    },
-    ranged: {
-      name: 'Лучники',
-      cost: { wood: 22, gold: 14, food: 10 },
-      trainSec: 4,
-      upkeepFoodPerMin: 0.65,
-      attack: 19,
-      defense: 10,
-      marchSecPerTile: 3.2
-    },
-    siege: {
-      name: 'Осадные башни',
-      cost: { wood: 35, stone: 25, gold: 20 },
-      trainSec: 5,
-      upkeepFoodPerMin: 0.9,
-      attack: 25,
-      defense: 13,
-      siegeBonus: 1.65,
-      marchSecPerTile: 4.2
-    }
-  },
-
   mapTargets: [
     {
-      id: 'bandit_camp_1',
-      kind: 'CAMP',
-      name: 'Лагерь мародёров',
-      realm: 'Зелёные просторы',
+      id: 'rbc_green_1',
+      kind: 'TOWER',
+      name: 'Башня разбойников (Ур. 3)',
+      realm: 'great_empire',
+      x: 0.25,
+      y: 0.30,
       distanceTiles: 2,
-      loot: { wood: 150, stone: 100, food: 130, gold: 90 },
+      wallBonus: 0.25,
+      gateBonus: 0.30,
+      loot: { wood: 180, stone: 140, food: 150, gold: 130, rubies: 4 },
       defense: {
-        left: { melee: 8, ranged: 4, siege: 0 },
-        center: { melee: 12, ranged: 8, siege: 1 },
-        right: { melee: 8, ranged: 4, siege: 0 }
+        left: { maceman: 8, crossbow: 5, knight: 0 },
+        center: { maceman: 12, crossbow: 8, knight: 2 },
+        right: { maceman: 8, crossbow: 5, knight: 0 }
       }
     },
     {
       id: 'village_green_1',
       kind: 'VILLAGE',
-      name: 'Деревня плодородных полей',
-      realm: 'Зелёные просторы',
-      distanceTiles: 2,
-      loot: { wood: 100, stone: 80, food: 220, gold: 70 },
-      defense: {
-        left: { melee: 6, ranged: 4, siege: 0 },
-        center: { melee: 10, ranged: 6, siege: 0 },
-        right: { melee: 6, ranged: 4, siege: 0 }
-      }
-    },
-    {
-      id: 'sand_outpost_2',
-      kind: 'CAMP',
-      name: 'Форт Пылающих песков',
-      realm: 'Пылающие пески',
-      distanceTiles: 4,
-      loot: { wood: 230, stone: 250, food: 190, gold: 170 },
-      defense: {
-        left: { melee: 16, ranged: 12, siege: 2 },
-        center: { melee: 22, ranged: 16, siege: 4 },
-        right: { melee: 16, ranged: 12, siege: 2 }
-      }
-    },
-    {
-      id: 'frost_citadel_3',
-      kind: 'CAMP',
-      name: 'Бастион Вечного холода',
-      realm: 'Вечный холод',
-      distanceTiles: 6,
-      loot: { wood: 360, stone: 390, food: 310, gold: 290 },
-      defense: {
-        left: { melee: 28, ranged: 22, siege: 5 },
-        center: { melee: 36, ranged: 28, siege: 8 },
-        right: { melee: 28, ranged: 22, siege: 5 }
-      }
-    },
-    {
-      id: 'event_caravan_1',
-      kind: 'EVENT',
-      name: 'Событие: Караван на перепутье',
-      realm: 'Пылающие пески',
+      name: 'Деревня плодородия',
+      realm: 'great_empire',
+      x: 0.76,
+      y: 0.26,
       distanceTiles: 3,
-      loot: { wood: 180, stone: 140, food: 180, gold: 210 },
-      choiceReward: { gold: 120, food: 120 },
+      wallBonus: 0.15,
+      gateBonus: 0.15,
+      loot: { wood: 120, stone: 90, food: 280, gold: 95, rubies: 2 },
       defense: {
-        left: { melee: 12, ranged: 10, siege: 1 },
-        center: { melee: 16, ranged: 12, siege: 2 },
-        right: { melee: 12, ranged: 10, siege: 1 }
+        left: { maceman: 6, crossbow: 4, knight: 0 },
+        center: { maceman: 9, crossbow: 6, knight: 1 },
+        right: { maceman: 6, crossbow: 4, knight: 0 }
+      }
+    },
+    {
+      id: 'outpost_green_1',
+      kind: 'OUTPOST',
+      name: 'Каменный аванпост',
+      realm: 'great_empire',
+      x: 0.78,
+      y: 0.74,
+      distanceTiles: 4,
+      wallBonus: 0.35,
+      gateBonus: 0.40,
+      loot: { wood: 240, stone: 310, food: 170, gold: 185, rubies: 6 },
+      defense: {
+        left: { maceman: 14, crossbow: 10, knight: 2 },
+        center: { maceman: 18, crossbow: 14, knight: 4 },
+        right: { maceman: 14, crossbow: 10, knight: 2 }
+      }
+    },
+    {
+      id: 'nomad_camp_sands',
+      kind: 'EVENT',
+      name: 'Лагерь кочевников',
+      realm: 'burning_sands',
+      x: 0.30,
+      y: 0.72,
+      distanceTiles: 4,
+      wallBonus: 0.40,
+      gateBonus: 0.45,
+      loot: { wood: 260, stone: 250, food: 230, gold: 260, rubies: 8 },
+      defense: {
+        left: { maceman: 16, crossbow: 14, knight: 3 },
+        center: { maceman: 22, crossbow: 16, knight: 5 },
+        right: { maceman: 16, crossbow: 14, knight: 3 }
+      }
+    },
+    {
+      id: 'frost_fortress',
+      kind: 'TOWER',
+      name: 'Башня варваров Севера',
+      realm: 'everwinter',
+      x: 0.72,
+      y: 0.34,
+      distanceTiles: 5,
+      wallBonus: 0.50,
+      gateBonus: 0.55,
+      loot: { wood: 340, stone: 320, food: 290, gold: 310, rubies: 10 },
+      defense: {
+        left: { maceman: 22, crossbow: 18, knight: 5 },
+        center: { maceman: 28, crossbow: 22, knight: 7 },
+        right: { maceman: 22, crossbow: 18, knight: 5 }
+      }
+    },
+    {
+      id: 'dragon_cult_peaks',
+      kind: 'TOWER',
+      name: 'Крепость культа дракона',
+      realm: 'fire_peaks',
+      x: 0.28,
+      y: 0.28,
+      distanceTiles: 6,
+      wallBonus: 0.65,
+      gateBonus: 0.70,
+      loot: { wood: 450, stone: 460, food: 410, gold: 440, rubies: 15 },
+      defense: {
+        left: { maceman: 30, crossbow: 24, knight: 8 },
+        center: { maceman: 38, crossbow: 30, knight: 12 },
+        right: { maceman: 30, crossbow: 24, knight: 8 }
       }
     }
   ]
 };
-    
