@@ -7,57 +7,57 @@ export const BALANCE = {
     great_empire: {
       id: 'great_empire',
       name: 'Великая империя',
-      groundTop: '#3e6b34',
-      groundBottom: '#2b4d24',
+      groundTop: '#457639',
+      groundBottom: '#2b4f23',
       accent: '#6ab04c'
     },
     burning_sands: {
       id: 'burning_sands',
       name: 'Пылающие пески',
-      groundTop: '#c29b57',
-      groundBottom: '#997438',
+      groundTop: '#cca35c',
+      groundBottom: '#9b7436',
       accent: '#f0932b'
     },
     everwinter: {
       id: 'everwinter',
       name: 'Вечный холод',
-      groundTop: '#9cb8c9',
-      groundBottom: '#6f8ea1',
+      groundTop: '#a4c2d4',
+      groundBottom: '#6f90a3',
       accent: '#7ed6df'
     },
     fire_peaks: {
       id: 'fire_peaks',
       name: 'Огненные вершины',
-      groundTop: '#59332e',
-      groundBottom: '#361d1a',
+      groundTop: '#633630',
+      groundBottom: '#381c19',
       accent: '#eb4d4b'
     }
   },
 
   startingResources: {
-    wood: 650,
-    stone: 550,
-    food: 750,
-    gold: 480,
-    rubies: 120
+    wood: 800,
+    stone: 700,
+    food: 900,
+    gold: 600,
+    rubies: 180
   },
 
   startingTroops: {
-    maceman: 28,
-    crossbow: 22,
-    knight: 10
+    maceman: 32,
+    crossbow: 24,
+    knight: 12
   },
 
   startingTools: {
-    ladder: 12,
-    ram: 6,
+    ladder: 14,
+    ram: 8,
     mantlet: 8
   },
 
   buildings: {
     keep: {
       name: 'Цитадель',
-      desc: 'Центр замка: открывает волны атаки и увеличивает склад.',
+      desc: 'Центр замка: открывает волны штурма, повышает вместимость склада и порядок.',
       baseCost: { wood: 140, stone: 130, gold: 90 },
       baseTimeSec: 10,
       costScale: 1.45,
@@ -66,7 +66,7 @@ export const BALANCE = {
     },
     wall: {
       name: 'Стены и ров',
-      desc: 'Защита флангов и ворот замка при обороне.',
+      desc: 'Защита флангов и ворот при обороне замка и набегах на замок.',
       baseCost: { wood: 90, stone: 140, gold: 60 },
       baseTimeSec: 9,
       costScale: 1.4,
@@ -75,7 +75,7 @@ export const BALANCE = {
     },
     barracks: {
       name: 'Казармы',
-      desc: 'Найм булавщиков, арбалетчиков и рыцарей.',
+      desc: 'Вербовка булавщиков, арбалетчиков и рыцарей; ускоряет обучение.',
       baseCost: { wood: 100, stone: 85, gold: 70 },
       baseTimeSec: 8,
       costScale: 1.38,
@@ -83,45 +83,51 @@ export const BALANCE = {
     },
     workshop: {
       name: 'Осадная мастерская',
-      desc: 'Производство лестниц, таранов и щитов для штурма стен.',
+      desc: 'Производство лестниц, таранов и щитов для прорыва стен и ворот.',
       baseCost: { wood: 110, stone: 75, gold: 65 },
       baseTimeSec: 8,
       costScale: 1.38
     },
     farm: {
       name: 'Ферма и мельница',
-      desc: 'Производство еды для содержания армии.',
+      desc: 'Производство еды для содержания армии и расширение амбара.',
       baseCost: { wood: 75, stone: 45, gold: 25 },
       baseTimeSec: 7,
       costScale: 1.34,
-      foodPerMin: 32,
-      foodCapBonus: 260
+      foodPerMin: 36,
+      foodCapBonus: 300
     },
     sawmill: {
       name: 'Лесопилка',
-      desc: 'Добыча древесины для построек и орудий.',
+      desc: 'Добыча древесины для зданий и осадных орудий.',
       baseCost: { wood: 55, stone: 55, gold: 25 },
       baseTimeSec: 7,
       costScale: 1.34,
-      woodPerMin: 26
+      woodPerMin: 30
     },
     quarry: {
       name: 'Каменоломня',
-      desc: 'Добыча камня для укреплений и цитадели.',
+      desc: 'Добыча камня для стен, цитадели и мастерских.',
       baseCost: { wood: 75, stone: 45, gold: 30 },
       baseTimeSec: 8,
       costScale: 1.34,
-      stonePerMin: 24
+      stonePerMin: 28
     },
     tavern: {
       name: 'Таверна и декор',
-      desc: 'Повышает общественный порядок и открывает шпионов.',
+      desc: 'Поднимает общественный порядок и усиливает разведку.',
       baseCost: { wood: 80, stone: 70, gold: 95 },
       baseTimeSec: 8,
       costScale: 1.36,
       orderBonus: 45
     }
   },
+
+  decorItems: [
+    { id: 'dec_garden', name: 'Королевский сад', orderBonus: 35, cost: { wood: 90, stone: 60, gold: 70 } },
+    { id: 'dec_statue', name: 'Статуя Завоевателя', orderBonus: 65, cost: { stone: 140, gold: 120, rubies: 15 } },
+    { id: 'dec_fest', name: 'Турнирная площадь', orderBonus: 110, cost: { wood: 180, stone: 180, gold: 200, rubies: 35 } }
+  ],
 
   units: {
     maceman: {
@@ -186,7 +192,7 @@ export const BALANCE = {
     {
       id: 'cmd_helga',
       name: 'Осадница Хельга',
-      perk: '+30% эффективность орудий и прорыв центра',
+      perk: '+24% прорыв центра и бонус орудий',
       marchSpeedMult: 1.0,
       flankAtkMult: 1.06,
       centerAtkMult: 1.24
@@ -197,7 +203,7 @@ export const BALANCE = {
     {
       id: 'cast_roland',
       name: 'Кастелян Роланд',
-      perk: '+25% защита стен и ворот',
+      perk: '+25% защита стен и ворот замка',
       wallDefMult: 1.25,
       prodMult: 1.0
     },
@@ -209,6 +215,29 @@ export const BALANCE = {
       prodMult: 1.2,
       orderFlat: 25
     }
+  ],
+
+  equipmentPool: [
+    { id: 'eq_blade', slot: 'weapon', name: 'Клинок Стража', bonusText: '+12% атака флангов', flankAtk: 0.12, centerAtk: 0, wallDef: 0, lootBonus: 0 },
+    { id: 'eq_aegis', slot: 'armor', name: 'Кираса Бастиона', bonusText: '+15% защита стен', flankAtk: 0, centerAtk: 0, wallDef: 0.15, lootBonus: 0 },
+    { id: 'eq_gem_ruby', slot: 'gem', name: 'Рубиновый самоцвет', bonusText: '+10% атака центра и +15% добычи', flankAtk: 0, centerAtk: 0.10, wallDef: 0, lootBonus: 0.15 }
+  ],
+
+  researchTree: [
+    { id: 'res_siege', name: 'Инженерия осад', desc: '+12% прорыв центра и флангов', costGold: 140, atkBonus: 0.12, prodBonus: 0, wallBonus: 0 },
+    { id: 'res_agri', name: 'Трёхполье и лесоводство', desc: '+15% добыча ресурсов', costGold: 130, atkBonus: 0, prodBonus: 0.15, wallBonus: 0 },
+    { id: 'res_fort', name: 'Каменная кладка', desc: '+15% защита стен замка', costGold: 135, atkBonus: 0, prodBonus: 0, wallBonus: 0.15 }
+  ],
+
+  quests: [
+    { id: 'q_build', title: 'Застройка королевства', desc: 'Доведите суммарный уровень построек замка до 14', target: 14, rewardGold: 180, rewardRubies: 20 },
+    { id: 'q_raid', title: 'Гроза разбойников', desc: 'Совершите 2 победоносных похода на карте', target: 2, rewardGold: 220, rewardRubies: 30 },
+    { id: 'q_order', title: 'Процветание подданных', desc: 'Достигните 210 общественного порядка', target: 210, rewardGold: 200, rewardRubies: 25 }
+  ],
+
+  alliancePerks: [
+    { id: 'al_war', name: 'Военный пакт', desc: '+10% к силе штурма всех флангов', costGold: 120, atkBonus: 0.10, prodBonus: 0 },
+    { id: 'al_trade', name: 'Караванный союз', desc: '+15% к добыче ресурсов всей империи', costGold: 120, atkBonus: 0, prodBonus: 0.15 }
   ],
 
   mapTargets: [
