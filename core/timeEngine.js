@@ -1,14 +1,14 @@
 import { BALANCE } from '../config/balance.js';
-import { getActiveCommander, getEconomyStats, stepEconomy } from './economy.js';
-import { resolveFlankBattle } from './combat.js';
+import { getActiveCommander, stepEconomy } from './economy.js';
+import { resolveSiegeBattle } from './combat.js';
 import { pushLog } from './state.js';
 import { sound } from '../audio/sound.js';
 
 export function getMarchDurationMs(state, distanceTiles) {
   const cmd = getActiveCommander(state);
   const speedMult = (cmd.marchSpeedMult || 1) * (state.quickMode ? BALANCE.quickModeMultiplier : 1);
-  const baseSec = Math.max(3, distanceTiles * 3);
-  return Math.max(2000, Math.round((baseSec / speedMult) * 1000));
+  const baseSec = Math.max(4, distanceTiles * 3.5);
+  return Math.max(2500, Math.round((baseSec / speedMult) * 1000));
 }
 
 export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
@@ -26,7 +26,7 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
     if (slot) {
       slot.level = q.targetLevel;
       const bName = BALANCE.buildings[slot.type]?.name || slot.type;
-      pushLog(state, `${bName} улучшен до ур. ${slot.level}`);
+      pushLog(state, `${bName} улучшен до ур. ${slot.level}!`);
       if (isLiveTick) sound.success();
     }
     state.buildQueue = null;
@@ -34,17 +34,19 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
 
   if (state.trainQueue && now >= state.trainQueue.totalEndsAt) {
     const tq = state.trainQueue;
-    state.troops[tq.unitType] = (state.troops[tq.unitType] || 0) + tq.count;
-    const uName = BALANCE.units[tq.unitType]?.name || tq.unitType;
-    pushLog(state, `Обучено ${tq.count}x ${uName}`);
+    if (tq.category === 'unit') {
+      state.troops[tq.itemKey] = (state.troops[tq.itemKey] || 0) + tq.count;
+      pushLog(state, `Завершён найм: ${tq.count}x ${BALANCE.units[tq.itemKey]?.name}`);
+    } else if (tq.category === 'tool') {
+      state.tools[tq.itemKey] = (state.tools[tq.itemKey] || 0) + tq.count;
+      pushLog(state, `Изготовлено орудий: ${tq.count}x ${BALANCE.tools[tq.itemKey]?.name}`);
+    }
     if (isLiveTick) sound.success();
     state.trainQueue = null;
   }
 
   const remainingMarches = [];
   const cmd = getActiveCommander(state);
-  const spec = BALANCE.specializations[state.specialization] || BALANCE.specializations.balanced;
-  const econ = getEconomyStats(state);
 
   for (const m of state.marches) {
     if (now < m.arrivesAt) {
@@ -53,35 +55,30 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
     }
 
     const target = BALANCE.mapTargets.find((t) => t.id === m.targetId);
-    if (m.kind === 'attack') {
-      const report = resolveFlankBattle(m.flanks, target ? target.defense : {}, {
+
+    if (m.kind === 'spy') {
+      if (target && !state.scoutedIds.includes(target.id)) {
+        state.scoutedIds.push(target.id);
+      }
+      pushLog(state, `Шпион вернулся с донесением о "${target?.name || m.targetId}".`);
+      if (isLiveTick) sound.success();
+    } else if (m.kind === 'attack') {
+      const report = resolveSiegeBattle(m.waves, target, {
         mutate: true,
-        wallBonus: econ.wallDefenseBonus,
-        atkMult: (cmd.atkMult || 1) * (spec.atkMult || 1),
-        siegeMult: cmd.siegeMult || 1,
-        fatigue: state.fatigue || 0
+        commander: cmd
       });
 
-      state.fatigue = Math.min(BALANCE.maxFatigue, (state.fatigue || 0) + BALANCE.fatiguePerMarch);
+      const loot = report.victory && target ? { ...target.loot } : { wood: 0, stone: 0, food: 0, gold: 0, rubies: 0 };
 
-      const survivors = {};
-      let anySurvivor = false;
-      for (const sec of ['left', 'center', 'right']) {
-        for (const [uType, cnt] of Object.entries(report.remainingAttackers[sec] || {})) {
-          survivors[uType] = (survivors[uType] || 0) + cnt;
-          if (cnt > 0) anySurvivor = true;
-        }
-      }
-
-      let loot = { wood: 0, stone: 0, food: 0, gold: 0 };
-      if (report.victory && target) {
-        loot = { ...target.loot };
+      if (report.victory && target?.kind === 'OUTPOST' && !state.capturedOutposts.includes(target.id)) {
+        state.capturedOutposts.push(target.id);
+        pushLog(state, `Аванпост "${target.name}" захвачен (+12% к добыче всей империи)!`);
       }
 
       state.lastReport = {
         targetName: target ? target.name : m.targetId,
         victory: report.victory,
-        bottlenecks: report.bottlenecks,
+        notes: report.notes,
         loot,
         at: now
       };
@@ -89,20 +86,23 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
       pushLog(
         state,
         report.victory
-          ? `Победа над "${target?.name}"! Трофеи в пути.`
-          : `Поражение у "${target?.name}". Причина: ${report.bottlenecks[0] || 'недостаток сил'}.`
+          ? `Штурм "${target?.name}" успешен! Трофеи в пути домой.`
+          : `Штурм "${target?.name}" отбит: ${report.notes[0] || 'недостаточно сил'}.`
       );
+
       if (isLiveTick) {
         report.victory ? sound.success() : sound.alert();
       }
 
+      const anySurvivor = Object.values(report.survivors).some((v) => v > 0);
       if (anySurvivor) {
         const travelMs = getMarchDurationMs(state, target?.distanceTiles || 2);
         remainingMarches.push({
           id: `${m.id}_ret`,
           targetId: m.targetId,
+          realm: m.realm,
           kind: 'return',
-          troops: survivors,
+          troops: report.survivors,
           loot,
           startedAt: now,
           arrivesAt: now + travelMs
@@ -115,10 +115,10 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
       for (const [res, amt] of Object.entries(m.loot || {})) {
         state.resources[res] = (state.resources[res] || 0) + amt;
       }
-      pushLog(state, `Отряд вернулся из "${target?.name || m.targetId}".`);
+      pushLog(state, `Армия вернулась из похода на "${target?.name || m.targetId}".`);
       if (isLiveTick) sound.click();
     }
   }
+
   state.marches = remainingMarches;
 }
-

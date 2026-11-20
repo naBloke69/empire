@@ -1,117 +1,119 @@
 import { BALANCE } from '../config/balance.js';
 
-export function emptyFlanks() {
+export function emptyWave() {
   return {
-    left: { melee: 0, ranged: 0, siege: 0 },
-    center: { melee: 0, ranged: 0, siege: 0 },
-    right: { melee: 0, ranged: 0, siege: 0 }
+    flanks: {
+      left: { maceman: 0, crossbow: 0, knight: 0 },
+      center: { maceman: 0, crossbow: 0, knight: 0 },
+      right: { maceman: 0, crossbow: 0, knight: 0 }
+    },
+    tools: {
+      ladder: 0,
+      ram: 0,
+      mantlet: 0
+    }
   };
 }
 
-function calcSectorPower(sectorUnits, isDefender, options = {}) {
-  const wallBonus = options.wallBonus || 0;
-  const atkMult = options.atkMult || 1;
-  const siegeMult = options.siegeMult || 1;
-  const fatiguePenalty = Math.max(0.5, 1 - (options.fatigue || 0));
-
-  let atk = 0;
-  let def = 0;
-  let siege = 0;
-
-  for (const [uType, cnt] of Object.entries(sectorUnits || {})) {
+function calcAttackerSectorPower(units, sec, tools, cmd) {
+  let raw = 0;
+  for (const [uType, cnt] of Object.entries(units || {})) {
     const cfg = BALANCE.units[uType];
     if (!cfg || !cnt) continue;
-    atk += cfg.attack * cnt;
-    def += cfg.defense * cnt;
-    if (cfg.siegeBonus) {
-      siege += cfg.attack * cnt * (cfg.siegeBonus - 1) * siegeMult;
-    }
+    raw += cfg.attack * cnt;
   }
-
-  if (isDefender) {
-    def *= 1 + wallBonus;
-  } else {
-    atk = (atk + siege) * atkMult * fatiguePenalty;
-  }
-
-  return { atk, def };
+  const mult = sec === 'center' ? (cmd.centerAtkMult || 1) : (cmd.flankAtkMult || 1);
+  return raw * mult;
 }
 
-export function resolveFlankBattle(attackFlanks, defenseFlanks, options = {}) {
+function calcDefenderSectorPower(units, sec, target, tools) {
+  let meleeDef = 0;
+  let rangedDef = 0;
+  for (const [uType, cnt] of Object.entries(units || {})) {
+    const cfg = BALANCE.units[uType];
+    if (!cfg || !cnt) continue;
+    if (uType === 'crossbow') rangedDef += cfg.defense * cnt;
+    else meleeDef += cfg.defense * cnt;
+  }
+
+  const shieldReduce = Math.min(0.65, (tools.mantlet || 0) * BALANCE.tools.mantlet.rangedReduce);
+  rangedDef *= 1 - shieldReduce;
+
+  let wallBonus = target.wallBonus || 0;
+  let gateBonus = sec === 'center' ? (target.gateBonus || 0) : 0;
+
+  wallBonus = Math.max(0, wallBonus - (tools.ladder || 0) * BALANCE.tools.ladder.wallNegate);
+  gateBonus = Math.max(0, gateBonus - (tools.ram || 0) * BALANCE.tools.ram.gateNegate);
+
+  return (meleeDef + rangedDef) * (1 + wallBonus + gateBonus);
+}
+
+export function resolveSiegeBattle(waves, target, options = {}) {
   const mutate = Boolean(options.mutate);
-  const atkClone = JSON.parse(JSON.stringify(attackFlanks));
-  const defClone = JSON.parse(JSON.stringify(defenseFlanks));
+  const cmd = options.commander || BALANCE.commanders[0];
+  const defClone = JSON.parse(JSON.stringify(target.defense));
+  const wavesClone = JSON.parse(JSON.stringify(waves));
 
   const sectors = ['left', 'center', 'right'];
-  let atkWonSectors = 0;
-  let defWonSectors = 0;
-  const sectorDetails = [];
+  const sectorWon = { left: false, center: false, right: false };
+  const notes = [];
 
-  for (const sec of sectors) {
-    const aUnits = atkClone[sec];
-    const dUnits = defClone[sec];
+  for (let wIdx = 0; wIdx < wavesClone.length; wIdx++) {
+    const wave = wavesClone[wIdx];
+    const tools = wave.tools || {};
 
-    const aPow = calcSectorPower(aUnits, false, options);
-    const dPow = calcSectorPower(dUnits, true, options);
+    for (const sec of sectors) {
+      const aUnits = wave.flanks[sec];
+      const dUnits = defClone[sec];
 
-    const aTotal = aPow.atk + aPow.def * 0.25;
-    const dTotal = dPow.def + dPow.atk * 0.25;
+      const aPow = calcAttackerSectorPower(aUnits, sec, tools, cmd);
+      const dPow = calcDefenderSectorPower(dUnits, sec, target, tools);
 
-    const aLossRatio = dTotal <= 0 ? 0 : Math.min(1, dTotal / Math.max(1, aTotal * 1.4));
-    const dLossRatio = aTotal <= 0 ? 0 : Math.min(1, aTotal / Math.max(1, dTotal * 1.4));
+      if (aPow <= 0) continue;
 
-    const aLost = {};
-    const dLost = {};
+      const aLossRatio = dPow <= 0 ? 0 : Math.min(1, dPow / Math.max(1, aPow * 1.35));
+      const dLossRatio = aPow <= 0 ? 0 : Math.min(1, aPow / Math.max(1, dPow * 1.25));
 
-    for (const uType of Object.keys(BALANCE.units)) {
-      const lostA = Math.min(aUnits[uType] || 0, Math.round((aUnits[uType] || 0) * aLossRatio));
-      const lostD = Math.min(dUnits[uType] || 0, Math.round((dUnits[uType] || 0) * dLossRatio));
-      aLost[uType] = lostA;
-      dLost[uType] = lostD;
-
-      if (mutate) {
-        aUnits[uType] = Math.max(0, (aUnits[uType] || 0) - lostA);
+      for (const uType of Object.keys(BALANCE.units)) {
+        const lostA = Math.min(aUnits[uType] || 0, Math.round((aUnits[uType] || 0) * aLossRatio));
+        const lostD = Math.min(dUnits[uType] || 0, Math.round((dUnits[uType] || 0) * dLossRatio));
+        if (mutate) {
+          aUnits[uType] = Math.max(0, (aUnits[uType] || 0) - lostA);
+        }
         dUnits[uType] = Math.max(0, (dUnits[uType] || 0) - lostD);
       }
-    }
 
-    const won = aTotal >= dTotal;
-    if (won) atkWonSectors += 1;
-    else defWonSectors += 1;
-
-    sectorDetails.push({
-      sector: sec,
-      won,
-      atkPower: Math.round(aTotal),
-      defPower: Math.round(dTotal),
-      aLost,
-      dLost
-    });
-  }
-
-  const victory = atkWonSectors >= 2;
-  const bottlenecks = [];
-
-  for (const s of sectorDetails) {
-    if (!s.won) {
-      const label = s.sector === 'left' ? 'Левый фланг' : s.sector === 'right' ? 'Правый фланг' : 'Центр';
-      bottlenecks.push(`${label}: враг сильнее (${s.defPower} против ${s.atkPower})`);
+      const remainingDefCount = Object.values(dUnits).reduce((s, v) => s + v, 0);
+      if (aPow >= dPow || remainingDefCount === 0) {
+        sectorWon[sec] = true;
+      }
     }
   }
-  if ((options.fatigue || 0) >= 0.16) {
-    bottlenecks.push(`Усталость армии снижает удар (${Math.round(options.fatigue * 100)}%)`);
+
+  for (const sec of sectors) {
+    if (!sectorWon[sec]) {
+      const name = sec === 'left' ? 'Левый фланг' : sec === 'right' ? 'Правый фланг' : 'Центр (ворота)';
+      notes.push(`${name}: защита устояла — добавьте орудий или волну`);
+    }
   }
-  if (!victory && bottlenecks.length === 0) {
-    bottlenecks.push('Не хватило общего перевеса сил по секторам');
+
+  const wonCount = sectors.filter((s) => sectorWon[s]).length;
+  const victory = wonCount >= 2;
+
+  const survivors = { maceman: 0, crossbow: 0, knight: 0 };
+  for (const wave of wavesClone) {
+    for (const sec of sectors) {
+      for (const uType of Object.keys(survivors)) {
+        survivors[uType] += wave.flanks[sec][uType] || 0;
+      }
+    }
   }
 
   return {
     victory,
-    atkWonSectors,
-    defWonSectors,
-    sectorDetails,
-    bottlenecks,
-    remainingAttackers: atkClone,
-    remainingDefenders: defClone
+    wonCount,
+    sectorWon,
+    notes,
+    survivors
   };
-      }
+}

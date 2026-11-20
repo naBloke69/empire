@@ -25,80 +25,84 @@ export function getBuildingTimeSec(type, nextLevel, state = null) {
   return Math.max(2, Math.round((cfg.baseTimeSec * mult) / quickMult));
 }
 
+export function getMaxAttackWaves(state) {
+  const keep = state.slots.find((s) => s.type === 'keep');
+  const lvl = keep ? keep.level : 1;
+  return Math.min(4, 1 + Math.floor(lvl / 2));
+}
+
 export function getEconomyStats(state) {
-  const spec = BALANCE.specializations[state.specialization] || BALANCE.specializations.balanced;
   const castellan = getActiveCastellan(state);
 
-  let foodPerMin = 12;
-  let woodPerMin = 12;
-  let stonePerMin = 10;
-  let goldPerMin = 10;
-  let foodCap = 700;
-  let storageCap = 1000;
+  let publicOrder = 100 + (castellan.orderFlat || 0);
+  let foodPerMin = 15;
+  let woodPerMin = 14;
+  let stonePerMin = 12;
+  let goldPerMin = 14;
+  let foodCap = 900;
+  let storageCap = 1200;
   let trainSpeedBonus = 0;
   let wallDefenseBonus = 0;
 
   for (const slot of state.slots) {
     const cfg = BALANCE.buildings[slot.type];
     if (!cfg || slot.level <= 0) continue;
-
+    if (cfg.orderBonus) publicOrder += cfg.orderBonus * slot.level;
     if (cfg.foodPerMin) foodPerMin += cfg.foodPerMin * slot.level;
     if (cfg.woodPerMin) woodPerMin += cfg.woodPerMin * slot.level;
     if (cfg.stonePerMin) stonePerMin += cfg.stonePerMin * slot.level;
     if (cfg.foodCapBonus) foodCap += cfg.foodCapBonus * slot.level;
     if (cfg.storageBonus) storageCap += cfg.storageBonus * slot.level;
-    if (cfg.trainSpeedBonusPerLvl) trainSpeedBonus += cfg.trainSpeedBonusPerLvl * slot.level;
+    if (cfg.trainSpeedPerLvl) trainSpeedBonus += cfg.trainSpeedPerLvl * slot.level;
     if (cfg.defenseBonusPerLvl) wallDefenseBonus += cfg.defenseBonusPerLvl * slot.level;
   }
 
-  const prodMult = (spec.prodMult || 1) * (castellan.prodMult || 1);
-  const foodMult = (spec.foodMult || 1) * (castellan.prodMult || 1);
+  const outpostBonus = 1 + (state.capturedOutposts?.length || 0) * 0.12;
+  const orderMult = 1 + Math.max(0, publicOrder - 100) / 300;
+  const prodMult = orderMult * (castellan.prodMult || 1) * outpostBonus;
 
   woodPerMin *= prodMult;
   stonePerMin *= prodMult;
   goldPerMin *= prodMult;
-  foodPerMin *= foodMult;
-  foodCap = Math.round(foodCap * (spec.foodMult || 1));
+  foodPerMin *= prodMult;
 
   let upkeepPerMin = 0;
-  const activeTroops = { ...state.troops };
+  const allTroops = { ...state.troops };
   for (const m of state.marches) {
     for (const [uType, cnt] of Object.entries(m.troops || {})) {
-      activeTroops[uType] = (activeTroops[uType] || 0) + cnt;
+      allTroops[uType] = (allTroops[uType] || 0) + cnt;
     }
-    if (m.flanks) {
+    for (const wave of m.waves || []) {
       for (const sec of ['left', 'center', 'right']) {
-        for (const [uType, cnt] of Object.entries(m.flanks[sec] || {})) {
-          activeTroops[uType] = (activeTroops[uType] || 0) + cnt;
+        for (const [uType, cnt] of Object.entries(wave.flanks?.[sec] || {})) {
+          allTroops[uType] = (allTroops[uType] || 0) + cnt;
         }
       }
     }
   }
 
-  for (const [uType, cnt] of Object.entries(activeTroops)) {
+  for (const [uType, cnt] of Object.entries(allTroops)) {
     const uCfg = BALANCE.units[uType];
-    if (uCfg) {
-      upkeepPerMin += (uCfg.upkeepFoodPerMin || 0) * cnt;
-    }
+    if (uCfg) upkeepPerMin += (uCfg.upkeepFoodPerMin || 0) * cnt;
   }
 
-  const netFoodPerMin = foodPerMin - upkeepPerMin;
-
   return {
+    publicOrder: Math.round(publicOrder),
+    orderEfficiencyPct: Math.round(orderMult * 100),
     ratesPerMin: {
       wood: woodPerMin,
       stone: stonePerMin,
-      food: netFoodPerMin,
+      food: foodPerMin - upkeepPerMin,
       gold: goldPerMin
     },
     caps: {
       wood: storageCap,
       stone: storageCap,
       food: foodCap,
-      gold: storageCap
+      gold: storageCap * 2
     },
-    trainSpeedBonus: trainSpeedBonus + ((spec.trainMult || 1) - 1),
-    wallDefenseBonus: wallDefenseBonus * (castellan.defMult || 1) * (spec.defMult || 1)
+    trainSpeedBonus: trainSpeedBonus + (orderMult - 1) * 0.5,
+    wallDefenseBonus: wallDefenseBonus * (castellan.wallDefMult || 1)
   };
 }
 
@@ -109,29 +113,11 @@ export function stepEconomy(state, dtSec) {
 
   for (const res of ['wood', 'stone', 'gold']) {
     const cap = stats.caps[res];
-    const nextVal = state.resources[res] + stats.ratesPerMin[res] * mins;
-    state.resources[res] = Math.max(0, Math.min(cap, nextVal));
+    state.resources[res] = Math.max(0, Math.min(cap, (state.resources[res] || 0) + stats.ratesPerMin[res] * mins));
   }
 
-  const foodDelta = stats.ratesPerMin.food * mins;
-  let nextFood = state.resources.food + foodDelta;
-  if (nextFood < 0) {
-    const deficit = Math.abs(nextFood);
-    const fromReserve = Math.min(state.reserve.food, deficit);
-    state.reserve.food -= fromReserve;
-    nextFood = Math.max(0, nextFood + fromReserve);
-  }
-  state.resources.food = Math.min(stats.caps.food, nextFood);
-
-  state.fatigue = Math.max(0, (state.fatigue || 0) - dtSec * 0.004);
-
-  if (state.autoLogisticsEnabled && state.resources.food > state.autoFoodThreshold) {
-    const excess = Math.min(25, Math.floor((state.resources.food - state.autoFoodThreshold) * 0.25));
-    if (excess > 0) {
-      state.resources.food -= excess;
-      state.reserve.food = (state.reserve.food || 0) + excess;
-    }
-  }
+  const nextFood = (state.resources.food || 0) + stats.ratesPerMin.food * mins;
+  state.resources.food = Math.max(0, Math.min(stats.caps.food, nextFood));
 }
 
 export function canAfford(resources, cost) {
@@ -140,22 +126,3 @@ export function canAfford(resources, cost) {
   }
   return true;
 }
-
-export function packReserve(state, res, amount) {
-  const avail = Math.floor(state.resources[res] || 0);
-  const take = Math.max(0, Math.min(avail, Math.floor(amount)));
-  if (take <= 0) return 0;
-  state.resources[res] -= take;
-  state.reserve[res] = (state.reserve[res] || 0) + take;
-  return take;
-}
-
-export function unpackReserve(state, res, amount) {
-  const avail = Math.floor(state.reserve[res] || 0);
-  const take = Math.max(0, Math.min(avail, Math.floor(amount)));
-  if (take <= 0) return 0;
-  state.reserve[res] -= take;
-  state.resources[res] = Math.min(getEconomyStats(state).caps[res], (state.resources[res] || 0) + take);
-  return take;
-}
-
