@@ -15,7 +15,7 @@ export function emptyWave() {
   };
 }
 
-function calcAttackerSectorPower(units, sec, tools, cmd, gear) {
+function calcAttackerSectorPower(units, sec, tools, cmd, gear, realmAtkMult = 1) {
   let raw = 0;
   for (const [uType, cnt] of Object.entries(units || {})) {
     const cfg = BALANCE.units[uType];
@@ -24,7 +24,7 @@ function calcAttackerSectorPower(units, sec, tools, cmd, gear) {
   }
   const baseMult = sec === 'center' ? (cmd.centerAtkMult || 1) : (cmd.flankAtkMult || 1);
   const gearBonus = sec === 'center' ? (gear.centerAtk || 0) : (gear.flankAtk || 0);
-  return raw * (baseMult + gearBonus);
+  return raw * (baseMult + gearBonus) * realmAtkMult;
 }
 
 function calcDefenderSectorPower(units, sec, target, tools) {
@@ -53,6 +53,7 @@ export function resolveSiegeBattle(waves, target, options = {}) {
   const mutate = Boolean(options.mutate);
   const cmd = options.commander || BALANCE.commanders[0];
   const gear = options.gear || { flankAtk: 0, centerAtk: 0 };
+  const realmAtkMult = options.realmAtkMult || 1;
   const defClone = JSON.parse(JSON.stringify(target.defense));
   const wavesClone = JSON.parse(JSON.stringify(waves));
 
@@ -68,7 +69,7 @@ export function resolveSiegeBattle(waves, target, options = {}) {
       const aUnits = wave.flanks[sec];
       const dUnits = defClone[sec];
 
-      const aPow = calcAttackerSectorPower(aUnits, sec, tools, cmd, gear);
+      const aPow = calcAttackerSectorPower(aUnits, sec, tools, cmd, gear, realmAtkMult);
       const dPow = calcDefenderSectorPower(dUnits, sec, target, tools);
 
       if (aPow <= 0) continue;

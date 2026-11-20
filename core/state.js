@@ -1,6 +1,6 @@
 import { BALANCE } from '../config/balance.js';
 
-const STORAGE_KEY = 'e4k_royal_mobile_v6';
+const STORAGE_KEY = 'e4k_royal_multiplayer_v8';
 
 export function createInitialState() {
   const now = Date.now();
@@ -9,6 +9,14 @@ export function createInitialState() {
     accountName: 'Лорд Stezzy',
     allianceName: 'Железный легион',
     allianceTreasury: 350,
+    allianceWarPoints: 120,
+    activeRallyTarget: 'Башня разбойников (Ур. 3)',
+    rallyJoinedTroops: 25,
+    shieldUntil: 0,
+    friends: ['Леди Валерия', 'Маршал Альдрик'],
+    allianceChat: [
+      { id: 'c1', author: 'Маршал Альдрик', text: 'Готовим сборы на башни разбойников и держим аванпосты!' }
+    ],
     activeAlliancePerks: ['al_war'],
     completedResearchIds: [],
     claimedQuestIds: [],
@@ -31,19 +39,19 @@ export function createInitialState() {
     tools: { ...BALANCE.startingTools },
     slots: [
       { id: 'slot_keep', type: 'keep', level: 1, gx: 0, gy: 0 },
-      { id: 'slot_wall', type: 'wall', level: 1, gx: 0, gy: 1 },
-      { id: 'slot_barracks', type: 'barracks', level: 1, gx: -1, gy: 0 },
-      { id: 'slot_workshop', type: 'workshop', level: 1, gx: 1, gy: 0 },
-      { id: 'slot_tavern', type: 'tavern', level: 1, gx: 0, gy: -1 },
-      { id: 'slot_farm', type: 'farm', level: 1, gx: -1, gy: 1 },
-      { id: 'slot_sawmill', type: 'sawmill', level: 1, gx: -1, gy: -1 },
-      { id: 'slot_quarry', type: 'quarry', level: 1, gx: 1, gy: -1 }
+      { id: 'slot_wall', type: 'wall', level: 1, gx: 0, gy: 1.2 },
+      { id: 'slot_barracks', type: 'barracks', level: 1, gx: -1.15, gy: 0 },
+      { id: 'slot_workshop', type: 'workshop', level: 1, gx: 1.15, gy: 0 },
+      { id: 'slot_tavern', type: 'tavern', level: 1, gx: 0, gy: -1.2 },
+      { id: 'slot_farm', type: 'farm', level: 1, gx: -1.15, gy: 1.2 },
+      { id: 'slot_sawmill', type: 'sawmill', level: 1, gx: -1.15, gy: -1.2 },
+      { id: 'slot_quarry', type: 'quarry', level: 1, gx: 1.15, gy: -1.2 }
     ],
     buildQueue: null,
     trainQueue: null,
     marches: [],
     logs: [
-      { id: now, text: 'Королевство готово! Замок, карта, волны штурма, герои, исследования, задания и альянс активны.' }
+      { id: now, text: 'Королевство готово! Мультиплеер, рынок, рейды, сборы и квесты v8 запущены.' }
     ],
     lastReport: null
   };

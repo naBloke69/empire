@@ -6,12 +6,16 @@ import { sound } from '../audio/sound.js';
 
 export function getMarchDurationMs(state, distanceTiles) {
   const cmd = getActiveCommander(state);
-  const speedMult = (cmd.marchSpeedMult || 1) * (state.quickMode ? BALANCE.quickModeMultiplier : 1);
+  const realm = BALANCE.realms[state.activeRealm] || BALANCE.realms.great_empire;
+  const speedMult =
+    (cmd.marchSpeedMult || 1) *
+    (realm.marchMult || 1) *
+    (state.quickMode ? BALANCE.quickModeMultiplier : 1);
   const baseSec = Math.max(4, distanceTiles * 3.5);
   return Math.max(2500, Math.round((baseSec / speedMult) * 1000));
 }
 
-export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
+export function advanceSimulation(state, now = Date.now(), isLiveTick = false, onToast = null) {
   const rawDt = Math.max(0, (now - (state.lastTickAt || now)) / 1000);
   const dtSec = Math.min(BALANCE.maxOfflineSeconds, rawDt) * (state.quickMode ? BALANCE.quickModeMultiplier : 1);
 
@@ -26,28 +30,38 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
     if (slot) {
       slot.level = q.targetLevel;
       const bName = BALANCE.buildings[slot.type]?.name || slot.type;
-      pushLog(state, `${bName} улучшен до ур. ${slot.level}!`);
-      if (isLiveTick) sound.success();
+      const msg = `${bName} улучшен до ур. ${slot.level}!`;
+      pushLog(state, msg);
+      if (isLiveTick) {
+        sound.success();
+        if (onToast) onToast(msg);
+      }
     }
     state.buildQueue = null;
   }
 
   if (state.trainQueue && now >= state.trainQueue.totalEndsAt) {
     const tq = state.trainQueue;
+    let msg = '';
     if (tq.category === 'unit') {
       state.troops[tq.itemKey] = (state.troops[tq.itemKey] || 0) + tq.count;
-      pushLog(state, `Завершён найм: ${tq.count}x ${BALANCE.units[tq.itemKey]?.name}`);
+      msg = `Завершён найм: ${tq.count}x ${BALANCE.units[tq.itemKey]?.name}`;
     } else if (tq.category === 'tool') {
       state.tools[tq.itemKey] = (state.tools[tq.itemKey] || 0) + tq.count;
-      pushLog(state, `Изготовлено орудий: ${tq.count}x ${BALANCE.tools[tq.itemKey]?.name}`);
+      msg = `Изготовлено орудий: ${tq.count}x ${BALANCE.tools[tq.itemKey]?.name}`;
     }
-    if (isLiveTick) sound.success();
+    if (msg) pushLog(state, msg);
+    if (isLiveTick) {
+      sound.success();
+      if (onToast && msg) onToast(msg);
+    }
     state.trainQueue = null;
   }
 
   const remainingMarches = [];
   const cmd = getActiveCommander(state);
   const gear = getGearBonuses(state);
+  const realm = BALANCE.realms[state.activeRealm] || BALANCE.realms.great_empire;
 
   for (const m of state.marches) {
     if (now < m.arrivesAt) {
@@ -61,13 +75,18 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
       if (target && !state.scoutedIds.includes(target.id)) {
         state.scoutedIds.push(target.id);
       }
-      pushLog(state, `Шпион вернулся с донесением о "${target?.name || m.targetId}".`);
-      if (isLiveTick) sound.success();
+      const msg = `Шпион вернулся с донесением о "${target?.name || m.targetId}".`;
+      pushLog(state, msg);
+      if (isLiveTick) {
+        sound.success();
+        if (onToast) onToast(msg);
+      }
     } else if (m.kind === 'attack') {
       const report = resolveSiegeBattle(m.waves, target, {
         mutate: true,
         commander: cmd,
-        gear
+        gear,
+        realmAtkMult: realm.atkMult || 1
       });
 
       const lootMult = 1 + (gear.lootBonus || 0);
@@ -84,6 +103,7 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
 
       if (report.victory) {
         state.victoriesCount = (state.victoriesCount || 0) + 1;
+        state.allianceWarPoints = (state.allianceWarPoints || 0) + 25;
       } else {
         state.castleFireDamage = Math.min(5, (state.castleFireDamage || 0) + 1);
       }
@@ -101,15 +121,14 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
         at: now
       };
 
-      pushLog(
-        state,
-        report.victory
-          ? `Штурм "${target?.name}" успешен! Трофеи в пути домой.`
-          : `Штурм "${target?.name}" отбит: в замке начался пожар (+1 очаг).`
-      );
+      const msg = report.victory
+        ? `Штурм "${target?.name}" успешен! Трофеи в пути домой.`
+        : `Штурм "${target?.name}" отбит: в замке начался пожар (+1 очаг).`;
+      pushLog(state, msg);
 
       if (isLiveTick) {
         report.victory ? sound.success() : sound.alert();
+        if (onToast) onToast(msg);
       }
 
       const anySurvivor = Object.values(report.survivors).some((v) => v > 0);
@@ -133,8 +152,12 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
       for (const [res, amt] of Object.entries(m.loot || {})) {
         state.resources[res] = (state.resources[res] || 0) + amt;
       }
-      pushLog(state, `Армия вернулась из похода на "${target?.name || m.targetId}".`);
-      if (isLiveTick) sound.click();
+      const msg = `Армия вернулась из похода на "${target?.name || m.targetId}".`;
+      pushLog(state, msg);
+      if (isLiveTick) {
+        sound.click();
+        if (onToast) onToast(msg);
+      }
     }
   }
 

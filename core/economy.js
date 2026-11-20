@@ -69,9 +69,14 @@ export function getMaxAttackWaves(state) {
 export function getEconomyStats(state) {
   const castellan = getActiveCastellan(state);
   const gear = getGearBonuses(state);
+  const realm = BALANCE.realms[state.activeRealm] || BALANCE.realms.great_empire;
   const firePenalty = Math.max(0.45, 1 - (state.castleFireDamage || 0) * 0.08);
 
-  let publicOrder = 100 + (castellan.orderFlat || 0) - (state.castleFireDamage || 0) * 8;
+  let publicOrder =
+    100 +
+    (realm.orderBonus || 0) +
+    (castellan.orderFlat || 0) -
+    (state.castleFireDamage || 0) * 8;
   let foodPerMin = 16;
   let woodPerMin = 15;
   let stonePerMin = 13;
@@ -109,6 +114,7 @@ export function getEconomyStats(state) {
   const orderMult = 1 + Math.max(0, publicOrder - 100) / 300;
   const prodMult =
     orderMult *
+    (realm.prodMult || 1) *
     (castellan.prodMult || 1) *
     outpostBonus *
     (1 + allianceProdBonus + (gear.researchProd || 0)) *
@@ -134,9 +140,10 @@ export function getEconomyStats(state) {
     }
   }
 
+  const foodUpkeepMult = realm.foodUpkeepMult || 1;
   for (const [uType, cnt] of Object.entries(allTroops)) {
     const uCfg = BALANCE.units[uType];
-    if (uCfg) upkeepPerMin += (uCfg.upkeepFoodPerMin || 0) * cnt;
+    if (uCfg) upkeepPerMin += (uCfg.upkeepFoodPerMin || 0) * cnt * foodUpkeepMult;
   }
 
   return {
@@ -155,7 +162,8 @@ export function getEconomyStats(state) {
       gold: storageCap * 2
     },
     trainSpeedBonus: trainSpeedBonus + (orderMult - 1) * 0.5,
-    wallDefenseBonus: wallDefenseBonus * (castellan.wallDefMult || 1) + gear.wallDef
+    wallDefenseBonus:
+      wallDefenseBonus * (castellan.wallDefMult || 1) * (realm.wallMult || 1) + gear.wallDef
   };
 }
 
