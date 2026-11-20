@@ -1,0 +1,2060 @@
+====================================================================
+1. index.html
+====================================================================
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Four Realms — Mobile Strategy</title>
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <header id="hud" class="hud"></header>
+
+    <div class="sub-toolbar">
+      <div class="row">
+        <select id="realm-filter" aria-label="Фильтр королевства">
+          <option value="ALL">Все королевства</option>
+          <option value="Зелёные просторы">Зелёные просторы</option>
+          <option value="Пылающие пески">Пылающие пески</option>
+          <option value="Вечный холод">Вечный холод</option>
+        </select>
+        <select id="map-layer-filter" aria-label="Фильтр целей на карте">
+          <option value="ALL">Все цели</option>
+          <option value="CAMP">Лагеря и форты</option>
+          <option value="VILLAGE">Деревни ресурсов</option>
+          <option value="EVENT">События</option>
+        </select>
+      </div>
+      <div class="row">
+        <button id="btn-clean-view" class="mini-btn" type="button">Чистый вид</button>
+        <button id="btn-quick-scout" class="mini-btn" type="button">Разведка целей</button>
+      </div>
+    </div>
+
+    <main id="view-container" class="view-container"></main>
+
+    <section id="event-log-panel" class="log-panel">
+      <div class="log-header">
+        <span>Журнал событий</span>
+        <button id="btn-toggle-log" class="mini-btn" type="button">Свернуть</button>
+      </div>
+      <ul id="event-log" class="event-log"></ul>
+    </section>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="castle" type="button">Замок</button>
+      <button class="nav-btn" data-tab="map" type="button">Карта</button>
+      <button class="nav-btn" data-tab="battle" type="button">Бой / Симулятор</button>
+      <button class="nav-btn" data-tab="command" type="button">Герои / Альянс</button>
+      <button class="nav-btn" data-tab="system" type="button">Сейв / Звук</button>
+    </nav>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+
+
+====================================================================
+2. styles/main.css
+====================================================================
+:root {
+  --bg: #0f141c;
+  --panel: #171f2c;
+  --panel-2: #202b3d;
+  --text: #eef3f9;
+  --muted: #98a6b8;
+  --accent: #e5a93c;
+  --accent-2: #4ea8de;
+  --danger: #e63946;
+  --ok: #4cc9a6;
+  --border: #2c3a4f;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.app {
+  max-width: 680px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 64px;
+}
+
+.app.clean-mode .hud,
+.app.clean-mode .sub-toolbar,
+.app.clean-mode .log-panel,
+.app.clean-mode .bottom-nav {
+  opacity: 0.14;
+}
+
+.app.clean-mode .hud:hover,
+.app.clean-mode .sub-toolbar:hover,
+.app.clean-mode .log-panel:hover,
+.app.clean-mode .bottom-nav:hover {
+  opacity: 1;
+}
+
+.hud {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.sub-toolbar {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.res-item {
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.res-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.res-val {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.view-container {
+  flex: 1;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.card h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.grid-slots {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.slot-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 10px;
+  text-align: left;
+  min-height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.slot-btn.active-slot {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.action-btn {
+  background: var(--accent);
+  color: #111;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 700;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.action-btn.secondary {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.action-btn.danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.action-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.map-node {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(78, 168, 222, 0.16);
+  color: var(--accent-2);
+  margin-right: 4px;
+}
+
+.badge.ok {
+  background: rgba(76, 201, 166, 0.16);
+  color: var(--ok);
+}
+
+.badge.warn {
+  background: rgba(229, 169, 60, 0.18);
+  color: var(--accent);
+}
+
+.log-panel {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 8px 12px;
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.event-log {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 110px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+.event-log.collapsed {
+  display: none;
+}
+
+.event-log li {
+  padding: 3px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.mini-btn {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-height: 34px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  z-index: 20;
+}
+
+.nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+
+.nav-btn.active {
+  color: var(--accent);
+  background: rgba(229, 169, 60, 0.1);
+}
+
+input[type="number"], select, textarea {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  width: 100%;
+  min-height: 38px;
+}
+
+.flank-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.flank-box {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+
+====================================================================
+3. config/balance.js
+====================================================================
+export const BALANCE = {
+  tickIntervalMs: 1000,
+  maxOfflineSeconds: 86400,
+  quickModeMultiplier: 2, // Ускорение темпа для быстрого режима
+  fatiguePerMarch: 0.08, // Усталость при походах без передышки
+  maxFatigue: 0.4,
+
+  startingResources: {
+    wood: 550,
+    stone: 450,
+    food: 650,
+    gold: 350
+  },
+
+  startingReserve: {
+    wood: 120,
+    stone: 100,
+    food: 180,
+    gold: 80
+  },
+
+  startingTroops: {
+    melee: 30,
+    ranged: 24,
+    siege: 6
+  },
+
+  specializations: {
+    balanced: {
+      name: 'Универсальный центр',
+      desc: '+10% к общей добыче и +10% к защите',
+      prodMult: 1.1,
+      defMult: 1.1,
+      trainMult: 1.0
+    },
+    granary: {
+      name: 'Житница королевства',
+      desc: '+30% к добыче еды и вместимости амбаров',
+      prodMult: 1.0,
+      foodMult: 1.3,
+      defMult: 1.0,
+      trainMult: 1.0
+    },
+    war_hub: {
+      name: 'Военный форпост',
+      desc: '+25% к скорости вербовки и +15% к силе атак',
+      prodMult: 1.0,
+      defMult: 1.05,
+      trainMult: 1.25,
+      atkMult: 1.15
+    }
+  },
+
+  buildPresets: {
+    eco: {
+      name: 'Пресет: Экономика',
+      priority: ['farm', 'sawmill', 'quarry', 'keep', 'wall', 'barracks']
+    },
+    war: {
+      name: 'Пресет: Армия и осада',
+      priority: ['barracks', 'keep', 'wall', 'farm', 'sawmill', 'quarry']
+    }
+  },
+
+  commanders: [
+    {
+      id: 'cmd_vanguard',
+      name: 'Капитан Торн',
+      role: 'Командир похода',
+      perkName: 'Быстрый авангард',
+      perkDesc: '+20% скорость марша, +15% урон по секторам',
+      marchSpeedMult: 1.2,
+      atkMult: 1.15,
+      siegeMult: 1.1
+    },
+    {
+      id: 'cmd_siege',
+      name: 'Инженер Марта',
+      role: 'Командир осады',
+      perkName: 'Осадный расчёт',
+      perkDesc: '+35% бонус осадных машин, меньше потерь при прорыве',
+      marchSpeedMult: 1.0,
+      atkMult: 1.08,
+      siegeMult: 1.35
+    }
+  ],
+
+  castellans: [
+    {
+      id: 'cast_ironwall',
+      name: 'Кастелян Брам',
+      role: 'Кастелян замка',
+      perkName: 'Железный вал',
+      perkDesc: '+25% к обороне стен и флангов',
+      defMult: 1.25
+    },
+    {
+      id: 'cast_steward',
+      name: 'Управляющая Лира',
+      role: 'Кастелян снабжения',
+      perkName: 'Бережный амбар',
+      perkDesc: '+20% к добыче ресурсов и защита резерва',
+      defMult: 1.08,
+      prodMult: 1.2
+    }
+  ],
+
+  buildings: {
+    keep: {
+      name: 'Цитадель',
+      baseCost: { wood: 120, stone: 100, gold: 80 },
+      baseTimeSec: 10,
+      costScale: 1.42,
+      foodCapBonus: 220,
+      storageBonus: 320
+    },
+    farm: {
+      name: 'Ферма',
+      baseCost: { wood: 70, stone: 40, gold: 20 },
+      baseTimeSec: 7,
+      costScale: 1.35,
+      foodPerMin: 26,
+      foodCapBonus: 200
+    },
+    sawmill: {
+      name: 'Лесопилка',
+      baseCost: { wood: 50, stone: 50, gold: 20 },
+      baseTimeSec: 7,
+      costScale: 1.35,
+      woodPerMin: 22
+    },
+    quarry: {
+      name: 'Каменоломня',
+      baseCost: { wood: 70, stone: 40, gold: 25 },
+      baseTimeSec: 8,
+      costScale: 1.35,
+      stonePerMin: 20
+    },
+    barracks: {
+      name: 'Казармы',
+      baseCost: { wood: 90, stone: 80, gold: 60 },
+      baseTimeSec: 9,
+      costScale: 1.38,
+      trainSpeedBonusPerLvl: 0.12
+    },
+    wall: {
+      name: 'Стены и ворота',
+      baseCost: { wood: 80, stone: 120, gold: 50 },
+      baseTimeSec: 9,
+      costScale: 1.38,
+      defenseBonusPerLvl: 0.15
+    }
+  },
+
+  units: {
+    melee: {
+      name: 'Мечники',
+      role: 'melee',
+      cost: { wood: 15, gold: 12, food: 10 },
+      trainSec: 3,
+      upkeepFoodPerMin: 0.55,
+      attack: 15,
+      defense: 17,
+      marchSecPerTile: 3
+    },
+    ranged: {
+      name: 'Лучники',
+      role: 'ranged',
+      cost: { wood: 22, gold: 14, food: 10 },
+      trainSec: 4,
+      upkeepFoodPerMin: 0.65,
+      attack: 19,
+      defense: 10,
+      marchSecPerTile: 3.2
+    },
+    siege: {
+      name: 'Осадные башни',
+      role: 'siege',
+      cost: { wood: 35, stone: 25, gold: 20 },
+      trainSec: 5,
+      upkeepFoodPerMin: 0.9,
+      attack: 25,
+      defense: 13,
+      siegeBonus: 1.65,
+      marchSecPerTile: 4.2
+    }
+  },
+
+  mapTargets: [
+    {
+      id: 'bandit_camp_1',
+      kind: 'CAMP',
+      name: 'Лагерь мародёров',
+      realm: 'Зелёные просторы',
+      distanceTiles: 2,
+      loot: { wood: 150, stone: 100, food: 130, gold: 90 },
+      defense: {
+        left: { melee: 8, ranged: 4, siege: 0 },
+        center: { melee: 12, ranged: 8, siege: 1 },
+        right: { melee: 8, ranged: 4, siege: 0 }
+      }
+    },
+    {
+      id: 'village_green_1',
+      kind: 'VILLAGE',
+      name: 'Деревня плодородных полей',
+      realm: 'Зелёные просторы',
+      distanceTiles: 2,
+      loot: { wood: 100, stone: 80, food: 220, gold: 70 },
+      defense: {
+        left: { melee: 6, ranged: 4, siege: 0 },
+        center: { melee: 10, ranged: 6, siege: 0 },
+        right: { melee: 6, ranged: 4, siege: 0 }
+      }
+    },
+    {
+      id: 'sand_outpost_2',
+      kind: 'CAMP',
+      name: 'Форт Пылающих песков',
+      realm: 'Пылающие пески',
+      distanceTiles: 4,
+      loot: { wood: 230, stone: 250, food: 190, gold: 170 },
+      defense: {
+        left: { melee: 16, ranged: 12, siege: 2 },
+        center: { melee: 22, ranged: 16, siege: 4 },
+        right: { melee: 16, ranged: 12, siege: 2 }
+      }
+    },
+    {
+      id: 'frost_citadel_3',
+      kind: 'CAMP',
+      name: 'Бастион Вечного холода',
+      realm: 'Вечный холод',
+      distanceTiles: 6,
+      loot: { wood: 360, stone: 390, food: 310, gold: 290 },
+      defense: {
+        left: { melee: 28, ranged: 22, siege: 5 },
+        center: { melee: 36, ranged: 28, siege: 8 },
+        right: { melee: 28, ranged: 22, siege: 5 }
+      }
+    },
+    {
+      id: 'event_caravan_1',
+      kind: 'EVENT',
+      name: 'Событие: Караван на перепутье',
+      realm: 'Пылающие пески',
+      distanceTiles: 3,
+      loot: { wood: 180, stone: 140, food: 180, gold: 210 },
+      choiceReward: { gold: 120, food: 120 },
+      defense: {
+        left: { melee: 12, ranged: 10, siege: 1 },
+        center: { melee: 16, ranged: 12, siege: 2 },
+        right: { melee: 12, ranged: 10, siege: 1 }
+      }
+    }
+  ]
+};
+
+
+====================================================================
+4. audio/sound.js
+====================================================================
+class SoundEngine {
+  constructor() {
+    this.enabled = true;
+    this.ctx = null;
+  }
+
+  ensureContext() {
+    if (!this.enabled) return null;
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+    return this.ctx;
+  }
+
+  tone(freq = 440, duration = 0.08, type = 'sine', gainPeak = 0.08, delay = 0) {
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(gainPeak, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  }
+
+  click() {
+    this.tone(520, 0.045, 'triangle', 0.06);
+  }
+
+  success() {
+    this.tone(523.25, 0.08, 'triangle', 0.08, 0);
+    this.tone(659.25, 0.09, 'triangle', 0.08, 0.08);
+    this.tone(783.99, 0.14, 'triangle', 0.09, 0.16);
+  }
+
+  alert() {
+    this.tone(330, 0.1, 'sawtooth', 0.07, 0);
+    this.tone(261.63, 0.14, 'sawtooth', 0.07, 0.11);
+  }
+
+  march() {
+    this.tone(392, 0.07, 'square', 0.05, 0);
+    this.tone(493.88, 0.09, 'square', 0.05, 0.07);
+  }
+}
+
+export const sound = new SoundEngine();
+
+
+====================================================================
+5. core/state.js
+====================================================================
+import { BALANCE } from '../config/balance.js';
+
+const STORAGE_KEY = 'four_realms_complete_save_v1';
+
+export function createInitialState() {
+  const now = Date.now();
+  return {
+    lastTickAt: now,
+    selectedSlotId: 'slot_1',
+    selectedTargetId: BALANCE.mapTargets[0].id,
+    specialization: 'balanced',
+    activeCommanderId: BALANCE.commanders[0].id,
+    activeCastellanId: BALANCE.castellans[0].id,
+    quickMode: false,
+    cleanView: false,
+    soundEnabled: true,
+    fatigue: 0,
+    autoLogisticsEnabled: true,
+    autoFoodThreshold: 400,
+    alliancePlanTargetId: BALANCE.mapTargets[1].id,
+    allianceTargetOffsetSec: 30,
+    scoutedIds: [],
+    resources: { ...BALANCE.startingResources },
+    reserve: { ...BALANCE.startingReserve },
+    troops: { ...BALANCE.startingTroops },
+    slots: [
+      { id: 'slot_1', type: 'keep', level: 1 },
+      { id: 'slot_2', type: 'farm', level: 1 },
+      { id: 'slot_3', type: 'sawmill', level: 1 },
+      { id: 'slot_4', type: 'quarry', level: 1 },
+      { id: 'slot_5', type: 'barracks', level: 1 },
+      { id: 'slot_6', type: 'wall', level: 1 }
+    ],
+    buildQueue: null,
+    trainQueue: null,
+    marches: [],
+    logs: [
+      { id: now, text: 'Замок готов. Настраивай специализацию, разведуй цели и гоняй симулятор перед походом.' }
+    ],
+    lastReport: null
+  };
+}
+
+export function pushLog(state, text) {
+  const timeStr = new Date().toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+  state.logs.unshift({
+    id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    text: `[${timeStr}] ${text}`
+  });
+  if (state.logs.length > 50) {
+    state.logs.length = 50;
+  }
+}
+
+export function saveState(state) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (err) {
+    console.warn('Ошибка сохранения:', err);
+  }
+}
+
+export function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return createInitialState();
+    const parsed = JSON.parse(raw);
+    return {
+      ...createInitialState(),
+      ...parsed,
+      resources: { ...BALANCE.startingResources, ...(parsed.resources || {}) },
+      reserve: { ...BALANCE.startingReserve, ...(parsed.reserve || {}) },
+      troops: { ...BALANCE.startingTroops, ...(parsed.troops || {}) }
+    };
+  } catch {
+    return createInitialState();
+  }
+}
+
+export function resetState() {
+  localStorage.removeItem(STORAGE_KEY);
+  return createInitialState();
+}
+
+
+====================================================================
+6. core/economy.js
+====================================================================
+import { BALANCE } from '../config/balance.js';
+
+export function getActiveCommander(state) {
+  return BALANCE.commanders.find((c) => c.id === state.activeCommanderId) || BALANCE.commanders[0];
+}
+
+export function getActiveCastellan(state) {
+  return BALANCE.castellans.find((c) => c.id === state.activeCastellanId) || BALANCE.castellans[0];
+}
+
+export function getBuildingCost(type, nextLevel) {
+  const cfg = BALANCE.buildings[type];
+  const mult = Math.pow(cfg.costScale, Math.max(0, nextLevel - 1));
+  const out = {};
+  for (const [res, val] of Object.entries(cfg.baseCost)) {
+    out[res] = Math.round(val * mult);
+  }
+  return out;
+}
+
+export function getBuildingTimeSec(type, nextLevel, state = null) {
+  const cfg = BALANCE.buildings[type];
+  const mult = Math.pow(cfg.costScale * 0.85, Math.max(0, nextLevel - 1));
+  const quickMult = state?.quickMode ? BALANCE.quickModeMultiplier : 1;
+  return Math.max(2, Math.round((cfg.baseTimeSec * mult) / quickMult));
+}
+
+export function getEconomyStats(state) {
+  const spec = BALANCE.specializations[state.specialization] || BALANCE.specializations.balanced;
+  const castellan = getActiveCastellan(state);
+
+  let foodPerMin = 12;
+  let woodPerMin = 12;
+  let stonePerMin = 10;
+  let goldPerMin = 10;
+  let foodCap = 700;
+  let storageCap = 1000;
+  let trainSpeedBonus = 0;
+  let wallDefenseBonus = 0;
+
+  for (const slot of state.slots) {
+    const cfg = BALANCE.buildings[slot.type];
+    if (!cfg || slot.level <= 0) continue;
+
+    if (cfg.foodPerMin) foodPerMin += cfg.foodPerMin * slot.level;
+    if (cfg.woodPerMin) woodPerMin += cfg.woodPerMin * slot.level;
+    if (cfg.stonePerMin) stonePerMin += cfg.stonePerMin * slot.level;
+    if (cfg.foodCapBonus) foodCap += cfg.foodCapBonus * slot.level;
+    if (cfg.storageBonus) storageCap += cfg.storageBonus * slot.level;
+    if (cfg.trainSpeedBonusPerLvl) trainSpeedBonus += cfg.trainSpeedBonusPerLvl * slot.level;
+    if (cfg.defenseBonusPerLvl) wallDefenseBonus += cfg.defenseBonusPerLvl * slot.level;
+  }
+
+  const prodMult = (spec.prodMult || 1) * (castellan.prodMult || 1);
+  const foodMult = (spec.foodMult || 1) * (castellan.prodMult || 1);
+
+  woodPerMin *= prodMult;
+  stonePerMin *= prodMult;
+  goldPerMin *= prodMult;
+  foodPerMin *= foodMult;
+  foodCap = Math.round(foodCap * (spec.foodMult || 1));
+
+  let upkeepPerMin = 0;
+  const activeTroops = { ...state.troops };
+  for (const m of state.marches) {
+    for (const [uType, cnt] of Object.entries(m.troops || {})) {
+      activeTroops[uType] = (activeTroops[uType] || 0) + cnt;
+    }
+    if (m.flanks) {
+      for (const sec of ['left', 'center', 'right']) {
+        for (const [uType, cnt] of Object.entries(m.flanks[sec] || {})) {
+          activeTroops[uType] = (activeTroops[uType] || 0) + cnt;
+        }
+      }
+    }
+  }
+
+  for (const [uType, cnt] of Object.entries(activeTroops)) {
+    const uCfg = BALANCE.units[uType];
+    if (uCfg) {
+      upkeepPerMin += (uCfg.upkeepFoodPerMin || 0) * cnt;
+    }
+  }
+
+  const netFoodPerMin = foodPerMin - upkeepPerMin;
+
+  return {
+    ratesPerMin: {
+      wood: woodPerMin,
+      stone: stonePerMin,
+      food: netFoodPerMin,
+      gold: goldPerMin
+    },
+    caps: {
+      wood: storageCap,
+      stone: storageCap,
+      food: foodCap,
+      gold: storageCap
+    },
+    trainSpeedBonus: trainSpeedBonus + ((spec.trainMult || 1) - 1),
+    wallDefenseBonus: wallDefenseBonus * (castellan.defMult || 1) * (spec.defMult || 1)
+  };
+}
+
+export function stepEconomy(state, dtSec) {
+  if (dtSec <= 0) return;
+  const stats = getEconomyStats(state);
+  const mins = dtSec / 60;
+
+  for (const res of ['wood', 'stone', 'gold']) {
+    const cap = stats.caps[res];
+    const nextVal = state.resources[res] + stats.ratesPerMin[res] * mins;
+    state.resources[res] = Math.max(0, Math.min(cap, nextVal));
+  }
+
+  const foodDelta = stats.ratesPerMin.food * mins;
+  let nextFood = state.resources.food + foodDelta;
+  if (nextFood < 0) {
+    const deficit = Math.abs(nextFood);
+    const fromReserve = Math.min(state.reserve.food, deficit);
+    state.reserve.food -= fromReserve;
+    nextFood = Math.max(0, nextFood + fromReserve);
+  }
+  state.resources.food = Math.min(stats.caps.food, nextFood);
+
+  // Мягкое восстановление усталости армии со временем
+  state.fatigue = Math.max(0, (state.fatigue || 0) - dtSec * 0.004);
+
+  // Автологистика: при переполнении еды свыше порога откладываем часть в резерв
+  if (state.autoLogisticsEnabled && state.resources.food > state.autoFoodThreshold) {
+    const excess = Math.min(25, Math.floor((state.resources.food - state.autoFoodThreshold) * 0.25));
+    if (excess > 0) {
+      state.resources.food -= excess;
+      state.reserve.food = (state.reserve.food || 0) + excess;
+    }
+  }
+}
+
+export function canAfford(resources, cost) {
+  for (const [res, amount] of Object.entries(cost)) {
+    if ((resources[res] || 0) < amount) return false;
+  }
+  return true;
+}
+
+export function spendResources(resources, cost) {
+  for (const [res, amount] of Object.entries(cost)) {
+    resources[res] = Math.max(0, resources[res] - amount);
+  }
+}
+
+export function packReserve(state, res, amount) {
+  const avail = Math.floor(state.resources[res] || 0);
+  const take = Math.max(0, Math.min(avail, Math.floor(amount)));
+  if (take <= 0) return 0;
+  state.resources[res] -= take;
+  state.reserve[res] = (state.reserve[res] || 0) + take;
+  return take;
+}
+
+export function unpackReserve(state, res, amount) {
+  const avail = Math.floor(state.reserve[res] || 0);
+  const take = Math.max(0, Math.min(avail, Math.floor(amount)));
+  if (take <= 0) return 0;
+  state.reserve[res] -= take;
+  state.resources[res] = Math.min(getEconomyStats(state).caps[res], (state.resources[res] || 0) + take);
+  return take;
+}
+
+
+====================================================================
+7. core/combat.js
+====================================================================
+import { BALANCE } from '../config/balance.js';
+
+export function emptyFlanks() {
+  return {
+    left: { melee: 0, ranged: 0, siege: 0 },
+    center: { melee: 0, ranged: 0, siege: 0 },
+    right: { melee: 0, ranged: 0, siege: 0 }
+  };
+}
+
+function calcSectorPower(sectorUnits, isDefender, options = {}) {
+  const wallBonus = options.wallBonus || 0;
+  const atkMult = options.atkMult || 1;
+  const siegeMult = options.siegeMult || 1;
+  const fatiguePenalty = Math.max(0.5, 1 - (options.fatigue || 0));
+
+  let atk = 0;
+  let def = 0;
+  let siege = 0;
+
+  for (const [uType, cnt] of Object.entries(sectorUnits || {})) {
+    const cfg = BALANCE.units[uType];
+    if (!cfg || !cnt) continue;
+    atk += cfg.attack * cnt;
+    def += cfg.defense * cnt;
+    if (cfg.siegeBonus) {
+      siege += cfg.attack * cnt * (cfg.siegeBonus - 1) * siegeMult;
+    }
+  }
+
+  if (isDefender) {
+    def *= 1 + wallBonus;
+  } else {
+    atk = (atk + siege) * atkMult * fatiguePenalty;
+  }
+
+  return { atk, def };
+}
+
+export function resolveFlankBattle(attackFlanks, defenseFlanks, options = {}) {
+  const mutate = Boolean(options.mutate);
+  const atkClone = JSON.parse(JSON.stringify(attackFlanks));
+  const defClone = JSON.parse(JSON.stringify(defenseFlanks));
+
+  const sectors = ['left', 'center', 'right'];
+  let atkWonSectors = 0;
+  let defWonSectors = 0;
+  const sectorDetails = [];
+
+  for (const sec of sectors) {
+    const aUnits = atkClone[sec];
+    const dUnits = defClone[sec];
+
+    const aPow = calcSectorPower(aUnits, false, options);
+    const dPow = calcSectorPower(dUnits, true, options);
+
+    const aTotal = aPow.atk + aPow.def * 0.25;
+    const dTotal = dPow.def + dPow.atk * 0.25;
+
+    const aLossRatio = dTotal <= 0 ? 0 : Math.min(1, dTotal / Math.max(1, aTotal * 1.4));
+    const dLossRatio = aTotal <= 0 ? 0 : Math.min(1, aTotal / Math.max(1, dTotal * 1.4));
+
+    const aLost = {};
+    const dLost = {};
+
+    for (const uType of Object.keys(BALANCE.units)) {
+      const lostA = Math.min(aUnits[uType] || 0, Math.round((aUnits[uType] || 0) * aLossRatio));
+      const lostD = Math.min(dUnits[uType] || 0, Math.round((dUnits[uType] || 0) * dLossRatio));
+      aLost[uType] = lostA;
+      dLost[uType] = lostD;
+
+      if (mutate) {
+        aUnits[uType] = Math.max(0, (aUnits[uType] || 0) - lostA);
+        dUnits[uType] = Math.max(0, (dUnits[uType] || 0) - lostD);
+      }
+    }
+
+    const won = aTotal >= dTotal;
+    if (won) atkWonSectors += 1;
+    else defWonSectors += 1;
+
+    sectorDetails.push({
+      sector: sec,
+      won,
+      atkPower: Math.round(aTotal),
+      defPower: Math.round(dTotal),
+      aLost,
+      dLost
+    });
+  }
+
+  const victory = atkWonSectors >= 2;
+  const bottlenecks = [];
+
+  for (const s of sectorDetails) {
+    if (!s.won) {
+      const label = s.sector === 'left' ? 'Левый фланг' : s.sector === 'right' ? 'Правый фланг' : 'Центр';
+      bottlenecks.push(`${label}: враг сильнее (${s.defPower} против ${s.atkPower})`);
+    }
+  }
+  if ((options.fatigue || 0) >= 0.16) {
+    bottlenecks.push(`Усталость армии снижает удар (${Math.round(options.fatigue * 100)}%)`);
+  }
+  if (!victory && bottlenecks.length === 0) {
+    bottlenecks.push('Не хватило общего перевеса сил по секторам');
+  }
+
+  return {
+    victory,
+    atkWonSectors,
+    defWonSectors,
+    sectorDetails,
+    bottlenecks,
+    remainingAttackers: atkClone,
+    remainingDefenders: defClone
+  };
+}
+
+
+====================================================================
+8. core/timeEngine.js
+====================================================================
+import { BALANCE } from '../config/balance.js';
+import { getActiveCommander, getEconomyStats, stepEconomy } from './economy.js';
+import { resolveFlankBattle } from './combat.js';
+import { pushLog } from './state.js';
+import { sound } from '../audio/sound.js';
+
+export function getMarchDurationMs(state, distanceTiles) {
+  const cmd = getActiveCommander(state);
+  const speedMult = (cmd.marchSpeedMult || 1) * (state.quickMode ? BALANCE.quickModeMultiplier : 1);
+  const baseSec = Math.max(3, distanceTiles * 3);
+  return Math.max(2000, Math.round((baseSec / speedMult) * 1000));
+}
+
+export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
+  const rawDt = Math.max(0, (now - (state.lastTickAt || now)) / 1000);
+  const dtSec = Math.min(BALANCE.maxOfflineSeconds, rawDt) * (state.quickMode ? BALANCE.quickModeMultiplier : 1);
+
+  if (dtSec > 0) {
+    stepEconomy(state, dtSec);
+    state.lastTickAt = now;
+  }
+
+  if (state.buildQueue && now >= state.buildQueue.endsAt) {
+    const q = state.buildQueue;
+    const slot = state.slots.find((s) => s.id === q.slotId);
+    if (slot) {
+      slot.level = q.targetLevel;
+      const bName = BALANCE.buildings[slot.type]?.name || slot.type;
+      pushLog(state, `${bName} улучшен до ур. ${slot.level}`);
+      if (isLiveTick) sound.success();
+    }
+    state.buildQueue = null;
+  }
+
+  if (state.trainQueue && now >= state.trainQueue.totalEndsAt) {
+    const tq = state.trainQueue;
+    state.troops[tq.unitType] = (state.troops[tq.unitType] || 0) + tq.count;
+    const uName = BALANCE.units[tq.unitType]?.name || tq.unitType;
+    pushLog(state, `Обучено ${tq.count}x ${uName}`);
+    if (isLiveTick) sound.success();
+    state.trainQueue = null;
+  }
+
+  const remainingMarches = [];
+  const cmd = getActiveCommander(state);
+  const spec = BALANCE.specializations[state.specialization] || BALANCE.specializations.balanced;
+  const econ = getEconomyStats(state);
+
+  for (const m of state.marches) {
+    if (now < m.arrivesAt) {
+      remainingMarches.push(m);
+      continue;
+    }
+
+    const target = BALANCE.mapTargets.find((t) => t.id === m.targetId);
+    if (m.kind === 'attack') {
+      const report = resolveFlankBattle(m.flanks, target ? target.defense : {}, {
+        mutate: true,
+        wallBonus: econ.wallDefenseBonus,
+        atkMult: (cmd.atkMult || 1) * (spec.atkMult || 1),
+        siegeMult: cmd.siegeMult || 1,
+        fatigue: state.fatigue || 0
+      });
+
+      state.fatigue = Math.min(BALANCE.maxFatigue, (state.fatigue || 0) + BALANCE.fatiguePerMarch);
+
+      const survivors = {};
+      let anySurvivor = false;
+      for (const sec of ['left', 'center', 'right']) {
+        for (const [uType, cnt] of Object.entries(report.remainingAttackers[sec] || {})) {
+          survivors[uType] = (survivors[uType] || 0) + cnt;
+          if (cnt > 0) anySurvivor = true;
+        }
+      }
+
+      let loot = { wood: 0, stone: 0, food: 0, gold: 0 };
+      if (report.victory && target) {
+        loot = { ...target.loot };
+      }
+
+      state.lastReport = {
+        targetName: target ? target.name : m.targetId,
+        victory: report.victory,
+        bottlenecks: report.bottlenecks,
+        loot,
+        at: now
+      };
+
+      pushLog(
+        state,
+        report.victory
+          ? `Победа над "${target?.name}"! Трофеи в пути.`
+          : `Поражение у "${target?.name}". Причина: ${report.bottlenecks[0] || 'недостаток сил'}.`
+      );
+      if (isLiveTick) {
+        report.victory ? sound.success() : sound.alert();
+      }
+
+      if (anySurvivor) {
+        const travelMs = getMarchDurationMs(state, target?.distanceTiles || 2);
+        remainingMarches.push({
+          id: `${m.id}_ret`,
+          targetId: m.targetId,
+          kind: 'return',
+          troops: survivors,
+          loot,
+          startedAt: now,
+          arrivesAt: now + travelMs
+        });
+      }
+    } else if (m.kind === 'return') {
+      for (const [uType, cnt] of Object.entries(m.troops || {})) {
+        state.troops[uType] = (state.troops[uType] || 0) + cnt;
+      }
+      for (const [res, amt] of Object.entries(m.loot || {})) {
+        state.resources[res] = (state.resources[res] || 0) + amt;
+      }
+      pushLog(state, `Отряд вернулся из "${target?.name || m.targetId}".`);
+      if (isLiveTick) sound.click();
+    }
+  }
+  state.marches = remainingMarches;
+}
+
+
+====================================================================
+9. ui/hud.js + ui/castleView.js + ui/worldMapView.js + ui/battleModal.js + ui/commandView.js
+====================================================================
+// --- ui/hud.js ---
+import { getEconomyStats } from '../core/economy.js';
+
+export function renderHud(el, state) {
+  const stats = getEconomyStats(state);
+  const r = state.resources;
+  const fmtRate = (v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}/м`;
+
+  el.innerHTML = `
+    <div class="res-item">
+      <span class="res-label">Дерево (${fmtRate(stats.ratesPerMin.wood)})</span>
+      <span class="res-val">${Math.floor(r.wood)} / ${stats.caps.wood}</span>
+    </div>
+    <div class="res-item">
+      <span class="res-label">Камень (${fmtRate(stats.ratesPerMin.stone)})</span>
+      <span class="res-val">${Math.floor(r.stone)} / ${stats.caps.stone}</span>
+    </div>
+    <div class="res-item">
+      <span class="res-label">Еда (${fmtRate(stats.ratesPerMin.food)})</span>
+      <span class="res-val">${Math.floor(r.food)} / ${stats.caps.food}</span>
+    </div>
+    <div class="res-item">
+      <span class="res-label">Монеты (${fmtRate(stats.ratesPerMin.gold)})</span>
+      <span class="res-val">${Math.floor(r.gold)} / ${stats.caps.gold}</span>
+    </div>
+    <div class="res-item">
+      <span class="res-label">Резерв еды</span>
+      <span class="res-val">${Math.floor(state.reserve.food)}</span>
+    </div>
+    <div class="res-item">
+      <span class="res-label">Войска / Уст.</span>
+      <span class="res-val">М:${state.troops.melee} Л:${state.troops.ranged} О:${state.troops.siege} (${Math.round((state.fatigue || 0) * 100)}%)</span>
+    </div>
+  `;
+}
+
+export function renderLogs(listEl, state) {
+  listEl.innerHTML = state.logs
+    .slice(0, 12)
+    .map((item) => `<li>${item.text}</li>`)
+    .join('');
+}
+
+// --- ui/castleView.js ---
+import { BALANCE } from '../config/balance.js';
+import {
+  canAfford,
+  getBuildingCost,
+  getBuildingTimeSec,
+  getEconomyStats,
+  packReserve,
+  unpackReserve
+} from '../core/economy.js';
+import { pushLog } from '../core/state.js';
+import { sound } from '../audio/sound.js';
+
+export function renderCastleView(container, state, onMutate) {
+  const now = Date.now();
+  const econ = getEconomyStats(state);
+  const slot = state.slots.find((s) => s.id === state.selectedSlotId) || state.slots[0];
+  const cfg = BALANCE.buildings[slot.type];
+  const nextLevel = slot.level + 1;
+  const cost = getBuildingCost(slot.type, nextLevel);
+  const timeSec = getBuildingTimeSec(slot.type, nextLevel, state);
+  const affordable = canAfford(state.resources, cost);
+  const busyBuild = Boolean(state.buildQueue);
+
+  const buildStatusText = state.buildQueue
+    ? `Строится: ${BALANCE.buildings[state.buildQueue.type]?.name} (ур. ${state.buildQueue.targetLevel}) — ${Math.max(0, Math.ceil((state.buildQueue.endsAt - now) / 1000))}с`
+    : 'Слот стройки свободен';
+
+  const trainStatusText = state.trainQueue
+    ? `Вербовка: ${state.trainQueue.count}x ${BALANCE.units[state.trainQueue.unitType]?.name} — ${Math.max(0, Math.ceil((state.trainQueue.totalEndsAt - now) / 1000))}с`
+    : 'Казармы свободны';
+
+  container.innerHTML = `
+    <div class="card">
+      <h3>Специализация и пресеты замка</h3>
+      <p class="muted">Защита стен: +${Math.round(econ.wallDefenseBonus * 100)}% • Скорость вербовки: +${Math.round(econ.trainSpeedBonus * 100)}%</p>
+      <div class="row" style="margin-bottom: 8px;">
+        ${Object.entries(BALANCE.specializations)
+          .map(
+            ([key, s]) => `
+          <button class="mini-btn" data-spec="${key}" type="button">
+            ${state.specialization === key ? '★ ' : ''}${s.name}
+          </button>
+        `
+          )
+          .join('')}
+      </div>
+      <div class="row">
+        <button id="btn-preset-eco" class="action-btn secondary" type="button">Пресет: Экономика</button>
+        <button id="btn-preset-war" class="action-btn secondary" type="button">Пресет: Армия и осада</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Сетка построек</h3>
+      <div class="grid-slots">
+        ${state.slots
+          .map((s) => {
+            const b = BALANCE.buildings[s.type];
+            return `
+              <button class="slot-btn ${s.id === slot.id ? 'active-slot' : ''}" data-slot="${s.id}" type="button">
+                <strong>${b.name}</strong>
+                <span class="muted">Уровень ${s.level}</span>
+              </button>
+            `;
+          })
+          .join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>${cfg.name} (Ур. ${slot.level} → ${nextLevel})</h3>
+      <p class="muted">Цена: Д:${cost.wood || 0} К:${cost.stone || 0} М:${cost.gold || 0} • Время: ${timeSec}с</p>
+      <p class="muted">${buildStatusText}</p>
+      <button id="btn-upgrade" class="action-btn" ${!affordable || busyBuild ? 'disabled' : ''} type="button">
+        Улучшить до ур. ${nextLevel}
+      </button>
+    </div>
+
+    <div class="card">
+      <h3>Казармы — Вербовка</h3>
+      <p class="muted">${trainStatusText}</p>
+      <div class="row">
+        ${Object.entries(BALANCE.units)
+          .map(([uKey, uCfg]) => {
+            const count = 5;
+            const unitCost = {
+              wood: (uCfg.cost.wood || 0) * count,
+              stone: (uCfg.cost.stone || 0) * count,
+              food: (uCfg.cost.food || 0) * count,
+              gold: (uCfg.cost.gold || 0) * count
+            };
+            const canTrain = !state.trainQueue && canAfford(state.resources, unitCost);
+            const speedDiv = 1 + Math.max(0, econ.trainSpeedBonus);
+            const quickDiv = state.quickMode ? BALANCE.quickModeMultiplier : 1;
+            const sec = Math.max(2, Math.round((uCfg.trainSec * count) / speedDiv / quickDiv));
+            return `
+              <button class="action-btn secondary" data-train="${uKey}" ${canTrain ? '' : 'disabled'} type="button">
+                +5 ${uCfg.name} (${sec}с)
+              </button>
+            `;
+          })
+          .join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Резерв и автологистика</h3>
+      <p class="muted">Защищённые ресурсы не сгорают при минусовой еде или набеге.</p>
+      <div class="row" style="margin-bottom: 8px;">
+        <button id="btn-pack-food" class="action-btn secondary" type="button">В резерв (+100 еды)</button>
+        <button id="btn-unpack-food" class="action-btn secondary" type="button">На склад (+100 еды)</button>
+        <button id="btn-toggle-logistics" class="mini-btn" type="button">
+          Авто-резерв: ${state.autoLogisticsEnabled ? 'Вкл' : 'Выкл'}
+        </button>
+      </div>
+    </div>
+  `;
+
+  container.querySelectorAll('[data-spec]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.specialization = btn.dataset.spec;
+      pushLog(state, `Выбрана специализация: ${BALANCE.specializations[state.specialization].name}`);
+      sound.click();
+      onMutate();
+    });
+  });
+
+  const applyPreset = (presetKey) => {
+    const preset = BALANCE.buildPresets[presetKey];
+    if (!preset) return;
+    const candidate = preset.priority
+      .map((type) => state.slots.find((s) => s.type === type))
+      .find((s) => s && canAfford(state.resources, getBuildingCost(s.type, s.level + 1)));
+
+    if (!candidate) {
+      pushLog(state, `По "${preset.name}" пока не хватает ресурсов ни на одно улучшение.`);
+      sound.alert();
+      onMutate();
+      return;
+    }
+
+    state.selectedSlotId = candidate.id;
+    if (!state.buildQueue) {
+      const nextLvl = candidate.level + 1;
+      const c = getBuildingCost(candidate.type, nextLvl);
+      const t = getBuildingTimeSec(candidate.type, nextLvl, state);
+      for (const [k, v] of Object.entries(c)) state.resources[k] -= v;
+      state.buildQueue = {
+        slotId: candidate.id,
+        type: candidate.type,
+        targetLevel: nextLvl,
+        endsAt: Date.now() + t * 1000
+      };
+      pushLog(state, `${preset.name}: начат апгрейд "${BALANCE.buildings[candidate.type].name}" до ур. ${nextLvl}`);
+      sound.click();
+    }
+    onMutate();
+  };
+
+  container.querySelector('#btn-preset-eco')?.addEventListener('click', () => applyPreset('eco'));
+  container.querySelector('#btn-preset-war')?.addEventListener('click', () => applyPreset('war'));
+
+  container.querySelectorAll('[data-slot]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.selectedSlotId = btn.dataset.slot;
+      sound.click();
+      onMutate();
+    });
+  });
+
+  container.querySelector('#btn-upgrade')?.addEventListener('click', () => {
+    if (state.buildQueue || !canAfford(state.resources, cost)) return;
+    for (const [k, v] of Object.entries(cost)) state.resources[k] -= v;
+    state.buildQueue = {
+      slotId: slot.id,
+      type: slot.type,
+      targetLevel: nextLevel,
+      endsAt: Date.now() + timeSec * 1000
+    };
+    pushLog(state, `Начато улучшение "${cfg.name}" до ур. ${nextLevel}`);
+    sound.click();
+    onMutate();
+  });
+
+  container.querySelectorAll('[data-train]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const uKey = btn.dataset.train;
+      const uCfg = BALANCE.units[uKey];
+      const count = 5;
+      const unitCost = {
+        wood: (uCfg.cost.wood || 0) * count,
+        stone: (uCfg.cost.stone || 0) * count,
+        food: (uCfg.cost.food || 0) * count,
+        gold: (uCfg.cost.gold || 0) * count
+      };
+      if (state.trainQueue || !canAfford(state.resources, unitCost)) return;
+      for (const [k, v] of Object.entries(unitCost)) state.resources[k] -= v;
+      const speedDiv = 1 + Math.max(0, econ.trainSpeedBonus);
+      const quickDiv = state.quickMode ? BALANCE.quickModeMultiplier : 1;
+      const totalSec = Math.max(2, Math.round((uCfg.trainSec * count) / speedDiv / quickDiv));
+      state.trainQueue = {
+        unitType: uKey,
+        count,
+        eachSec: uCfg.trainSec,
+        totalEndsAt: Date.now() + totalSec * 1000
+      };
+      pushLog(state, `Запущена вербовка: ${count}x ${uCfg.name}`);
+      sound.click();
+      onMutate();
+    });
+  });
+
+  container.querySelector('#btn-pack-food')?.addEventListener('click', () => {
+    if (packReserve(state, 'food', 100) > 0) {
+      pushLog(state, 'Отложено в резерв: 100 еды');
+      sound.click();
+      onMutate();
+    }
+  });
+
+  container.querySelector('#btn-unpack-food')?.addEventListener('click', () => {
+    if (unpackReserve(state, 'food', 100) > 0) {
+      pushLog(state, 'Переведено на склад: 100 еды');
+      sound.click();
+      onMutate();
+    }
+  });
+
+  container.querySelector('#btn-toggle-logistics')?.addEventListener('click', () => {
+    state.autoLogisticsEnabled = !state.autoLogisticsEnabled;
+    pushLog(state, `Авто-резерв еды: ${state.autoLogisticsEnabled ? 'включён' : 'выключен'}`);
+    sound.click();
+    onMutate();
+  });
+}
+
+// --- ui/worldMapView.js ---
+import { BALANCE } from '../config/balance.js';
+import { getMarchDurationMs } from '../core/timeEngine.js';
+import { pushLog } from '../core/state.js';
+import { sound } from '../audio/sound.js';
+
+export function renderWorldMapView(container, state, filters, onMutate, onGoBattle) {
+  const now = Date.now();
+  const filtered = BALANCE.mapTargets.filter((t) => {
+    const realmOk = filters.realm === 'ALL' || t.realm === filters.realm;
+    const kindOk = filters.kind === 'ALL' || t.kind === filters.kind;
+    return realmOk && kindOk;
+  });
+
+  container.innerHTML = `
+    <div class="card">
+      <h3>Карта королевств (${filtered.length})</h3>
+      ${filtered
+        .map((t) => {
+          const scouted = state.scoutedIds.includes(t.id);
+          const defTotal = ['left', 'center', 'right'].reduce((acc, sec) => {
+            const s = t.defense[sec];
+            return acc + (s.melee || 0) + (s.ranged || 0) + (s.siege || 0);
+          }, 0);
+          const marchSec = Math.round(getMarchDurationMs(state, t.distanceTiles) / 1000);
+          const kindBadge =
+            t.kind === 'VILLAGE'
+              ? '<span class="badge ok">Деревня</span>'
+              : t.kind === 'EVENT'
+              ? '<span class="badge warn">Событие</span>'
+              : '<span class="badge">Цель</span>';
+
+          return `
+            <div class="map-node">
+              <div>
+                <div>${kindBadge}<strong>${t.name}</strong></div>
+                <div class="muted">${t.realm} • Дист: ${t.distanceTiles} (~${marchSec}с) • Гарнизон: ${scouted ? defTotal : `~${defTotal}`}</div>
+                ${
+                  scouted
+                    ? `<div class="muted">Разведка: Л(${t.defense.left.melee}м/${t.defense.left.ranged}л) Ц(${t.defense.center.melee}м/${t.defense.center.ranged}л/${t.defense.center.siege}о) П(${t.defense.right.melee}м/${t.defense.right.ranged}л)</div>`
+                    : `<div class="muted">Трофеи: Д:${t.loot.wood} К:${t.loot.stone} Е:${t.loot.food} М:${t.loot.gold}</div>`
+                }
+                ${
+                  t.choiceReward
+                    ? `<div class="row" style="margin-top:6px;">
+                        <button class="mini-btn" data-diplomacy="${t.id}" type="button">Переговоры (+${t.choiceReward.gold}м, +${t.choiceReward.food}е)</button>
+                      </div>`
+                    : ''
+                }
+              </div>
+              <button class="action-btn" data-select-target="${t.id}" type="button">К атаке</button>
+            </div>
+          `;
+        })
+        .join('')}
+    </div>
+
+    <div class="card">
+      <h3>Активные марши (${state.marches.length})</h3>
+      ${
+        state.marches.length === 0
+          ? '<p class="muted">Свободных походов сейчас нет.</p>'
+          : state.marches
+              .map((m) => {
+                const target = BALANCE.mapTargets.find((x) => x.id === m.targetId);
+                const leftSec = Math.max(0, Math.ceil((m.arrivesAt - now) / 1000));
+                const kindLabel = m.kind === 'attack' ? 'Поход на цель' : 'Возврат в замок';
+                return `<p class="muted">${kindLabel} → ${target?.name || m.targetId}: <strong>${leftSec}с</strong></p>`;
+              })
+              .join('')
+      }
+    </div>
+  `;
+
+  container.querySelectorAll('[data-select-target]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.selectedTargetId = btn.dataset.selectTarget;
+      pushLog(state, `Выбрана цель: ${BALANCE.mapTargets.find((x) => x.id === state.selectedTargetId)?.name}`);
+      sound.click();
+      onMutate();
+      if (onGoBattle) onGoBattle();
+    });
+  });
+
+  container.querySelectorAll('[data-diplomacy]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = BALANCE.mapTargets.find((x) => x.id === btn.dataset.diplomacy);
+      if (!target || !target.choiceReward) return;
+      state.resources.gold += target.choiceReward.gold || 0;
+      state.resources.food += target.choiceReward.food || 0;
+      pushLog(state, `Дипломатия у "${target.name}": получены ресурсы без боя.`);
+      sound.success();
+      onMutate();
+    });
+  });
+}
+
+// --- ui/battleModal.js ---
+import { BALANCE } from '../config/balance.js';
+import { emptyFlanks, resolveFlankBattle } from '../core/combat.js';
+import { getActiveCommander, getEconomyStats } from '../core/economy.js';
+import { getMarchDurationMs } from '../core/timeEngine.js';
+import { pushLog } from '../core/state.js';
+import { sound } from '../audio/sound.js';
+
+let draftFlanks = emptyFlanks();
+let lastSimResult = null;
+
+export function renderBattleView(container, state, onMutate) {
+  const target = BALANCE.mapTargets.find((t) => t.id === state.selectedTargetId) || BALANCE.mapTargets[0];
+  const cmd = getActiveCommander(state);
+  const spec = BALANCE.specializations[state.specialization] || BALANCE.specializations.balanced;
+  const econ = getEconomyStats(state);
+  const marchSec = Math.round(getMarchDurationMs(state, target.distanceTiles) / 1000);
+
+  container.innerHTML = `
+    <div class="card">
+      <h3>Распределение по секторам — ${target.name}</h3>
+      <p class="muted">Войска: М:${state.troops.melee} Л:${state.troops.ranged} О:${state.troops.siege} • Командир: ${cmd.name} • Марш: ~${marchSec}с</p>
+      <div class="flank-grid">
+        ${['left', 'center', 'right']
+          .map((sec) => {
+            const label = sec === 'left' ? 'Левый фланг' : sec === 'right' ? 'Правый фланг' : 'Центр';
+            return `
+              <div class="flank-box">
+                <strong>${label}</strong>
+                ${Object.keys(BALANCE.units)
+                  .map((uKey) => {
+                    const uCfg = BALANCE.units[uKey];
+                    return `
+                      <label class="muted">${uCfg.name}
+                        <input type="number" min="0" max="999" data-sec="${sec}" data-unit="${uKey}" value="${draftFlanks[sec][uKey] || 0}" />
+                      </label>
+                    `;
+                  })
+                  .join('')}
+              </div>
+            `;
+          })
+          .join('')}
+      </div>
+      <div class="row" style="margin-top: 10px;">
+        <button id="btn-auto-split" class="action-btn secondary" type="button">Авто-раскладка</button>
+        <button id="btn-sim" class="action-btn secondary" type="button">Симулятор</button>
+        <button id="btn-launch" class="action-btn" type="button">В поход</button>
+      </div>
+    </div>
+
+    ${
+      lastSimResult
+        ? `
+      <div class="card">
+        <h3>Результат симулятора (без потерь)</h3>
+        <p><strong>Прогноз:</strong> ${lastSimResult.victory ? 'Победа' : 'Поражение'} (${lastSimResult.atkWonSectors}/3 секторов)</p>
+        ${
+          lastSimResult.bottlenecks.length
+            ? `<p class="muted">Слабые места: ${lastSimResult.bottlenecks.join('; ')}</p>`
+            : '<p class="muted">Все сектора сбалансированы.</p>'
+        }
+      </div>
+    `
+        : ''
+    }
+
+    ${
+      state.lastReport
+        ? `
+      <div class="card">
+        <h3>Последний отчёт боя (${state.lastReport.targetName})</h3>
+        <p><strong>Итог:</strong> ${state.lastReport.victory ? 'Победа' : 'Поражение'}</p>
+        ${
+          state.lastReport.bottlenecks?.length
+            ? `<p class="muted">Разбор: ${state.lastReport.bottlenecks.join('; ')}</p>`
+            : ''
+        }
+        <p class="muted">Трофеи: Д:${state.lastReport.loot.wood} К:${state.lastReport.loot.stone} Е:${state.lastReport.loot.food} М:${state.lastReport.loot.gold}</p>
+      </div>
+    `
+        : ''
+    }
+  `;
+
+  const readInputs = () => {
+    const next = emptyFlanks();
+    container.querySelectorAll('input[data-sec]').forEach((inp) => {
+      const sec = inp.dataset.sec;
+      const unit = inp.dataset.unit;
+      next[sec][unit] = Math.max(0, parseInt(inp.value || '0', 10) || 0);
+    });
+    draftFlanks = next;
+    return next;
+  };
+
+  container.querySelectorAll('input[data-sec]').forEach((inp) => {
+    inp.addEventListener('change', readInputs);
+  });
+
+  container.querySelector('#btn-auto-split')?.addEventListener('click', () => {
+    const next = emptyFlanks();
+    for (const uKey of Object.keys(BALANCE.units)) {
+      const total = state.troops[uKey] || 0;
+      const each = Math.floor(total / 3);
+      next.left[uKey] = each;
+      next.right[uKey] = each;
+      next.center[uKey] = total - each * 2;
+    }
+    draftFlanks = next;
+    sound.click();
+    onMutate();
+  });
+
+  container.querySelector('#btn-sim')?.addEventListener('click', () => {
+    const flanks = readInputs();
+    lastSimResult = resolveFlankBattle(flanks, target.defense, {
+      mutate: false,
+      wallBonus: econ.wallDefenseBonus,
+      atkMult: (cmd.atkMult || 1) * (spec.atkMult || 1),
+      siegeMult: cmd.siegeMult || 1,
+      fatigue: state.fatigue || 0
+    });
+    sound.click();
+    onMutate();
+  });
+
+  container.querySelector('#btn-launch')?.addEventListener('click', () => {
+    const flanks = readInputs();
+    const totalNeeded = { melee: 0, ranged: 0, siege: 0 };
+    for (const sec of ['left', 'center', 'right']) {
+      for (const uKey of Object.keys(totalNeeded)) {
+        totalNeeded[uKey] += flanks[sec][uKey] || 0;
+      }
+    }
+
+    const totalCount = totalNeeded.melee + totalNeeded.ranged + totalNeeded.siege;
+    if (totalCount <= 0) {
+      pushLog(state, 'Распределите хотя бы один отряд перед отправкой.');
+      sound.alert();
+      onMutate();
+      return;
+    }
+
+    for (const uKey of Object.keys(totalNeeded)) {
+      if ((state.troops[uKey] || 0) < totalNeeded[uKey]) {
+        pushLog(state, `Не хватает войск (${BALANCE.units[uKey].name}).`);
+        sound.alert();
+        onMutate();
+        return;
+      }
+    }
+
+    for (const uKey of Object.keys(totalNeeded)) {
+      state.troops[uKey] -= totalNeeded[uKey];
+    }
+
+    const travelMs = getMarchDurationMs(state, target.distanceTiles);
+    state.marches.push({
+      id: `march_${Date.now()}`,
+      targetId: target.id,
+      kind: 'attack',
+      flanks,
+      startedAt: Date.now(),
+      arrivesAt: Date.now() + travelMs
+    });
+
+    draftFlanks = emptyFlanks();
+    pushLog(state, `Отряд выступил на "${target.name}" (${Math.round(travelMs / 1000)}с).`);
+    sound.march();
+    onMutate();
+  });
+}
+
+// --- ui/commandView.js ---
+import { BALANCE } from '../config/balance.js';
+import { getMarchDurationMs } from '../core/timeEngine.js';
+import { pushLog } from '../core/state.js';
+import { sound } from '../audio/sound.js';
+
+export function renderCommandView(container, state, onMutate) {
+  const planTarget = BALANCE.mapTargets.find((t) => t.id === state.alliancePlanTargetId) || BALANCE.mapTargets[0];
+  const marchSec = Math.round(getMarchDurationMs(state, planTarget.distanceTiles) / 1000);
+  const launchInSec = Math.max(5, (state.allianceTargetOffsetSec || 30) - marchSec);
+
+  container.innerHTML = `
+    <div class="card">
+      <h3>Командиры похода</h3>
+      ${BALANCE.commanders
+        .map((c) => {
+          const active = c.id === state.activeCommanderId;
+          return `
+            <div class="map-node">
+              <div>
+                <strong>${c.name}</strong> — <span class="muted">${c.perkName}</span>
+                <div class="muted">${c.perkDesc}</div>
+              </div>
+              <button class="mini-btn" data-cmd="${c.id}" type="button">${active ? 'Активен' : 'Выбрать'}</button>
+            </div>
+          `;
+        })
+        .join('')}
+    </div>
+
+    <div class="card">
+      <h3>Кастеляны замка</h3>
+      ${BALANCE.castellans
+        .map((c) => {
+          const active = c.id === state.activeCastellanId;
+          return `
+            <div class="map-node">
+              <div>
+                <strong>${c.name}</strong> — <span class="muted">${c.perkName}</span>
+                <div class="muted">${c.perkDesc}</div>
+              </div>
+              <button class="mini-btn" data-cast="${c.id}" type="button">${active ? 'Активен' : 'Выбрать'}</button>
+            </div>
+          `;
+        })
+        .join('')}
+    </div>
+
+    <div class="card">
+      <h3>Планёр общей атаки альянса</h3>
+      <label class="muted">Цель операции
+        <select id="plan-target">
+          ${BALANCE.mapTargets
+            .map((t) => `<option value="${t.id}" ${t.id === planTarget.id ? 'selected' : ''}>${t.name} (${t.realm})</option>`)
+            .join('')}
+        </select>
+      </label>
+      <label class="muted" style="display:block; margin-top:8px;">Окно удара через (сек)
+        <input id="plan-offset" type="number" min="15" max="600" value="${state.allianceTargetOffsetSec || 30}" />
+      </label>
+      <p class="muted" style="margin-top:8px;">
+        Ваш марш: ~${marchSec}с. Рекомендуемый старт вашего отряда: через <strong>${launchInSec}с</strong>.
+      </p>
+      <button id="btn-share-plan" class="action-btn secondary" type="button">Зафиксировать метку в журнале</button>
+    </div>
+  `;
+
+  container.querySelectorAll('[data-cmd]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.activeCommanderId = btn.dataset.cmd;
+      const c = BALANCE.commanders.find((x) => x.id === state.activeCommanderId);
+      pushLog(state, `Назначен командир: ${c?.name}`);
+      sound.click();
+      onMutate();
+    });
+  });
+
+  container.querySelectorAll('[data-cast]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.activeCastellanId = btn.dataset.cast;
+      const c = BALANCE.castellans.find((x) => x.id === state.activeCastellanId);
+      pushLog(state, `Назначен кастелян: ${c?.name}`);
+      sound.click();
+      onMutate();
+    });
+  });
+
+  container.querySelector('#plan-target')?.addEventListener('change', (e) => {
+    state.alliancePlanTargetId = e.target.value;
+    sound.click();
+    onMutate();
+  });
+
+  container.querySelector('#plan-offset')?.addEventListener('change', (e) => {
+    state.allianceTargetOffsetSec = Math.max(15, parseInt(e.target.value || '30', 10) || 30);
+    onMutate();
+  });
+
+  container.querySelector('#btn-share-plan')?.addEventListener('click', () => {
+    pushLog(
+      state,
+      `План альянса по "${planTarget.name}": старт через ${launchInSec}с (марш ~${marchSec}с).`
+    );
+    sound.click();
+    onMutate();
+  });
+}
+
+
+====================================================================
+10. app.js
+====================================================================
+import { BALANCE } from './config/balance.js';
+import { loadState, resetState, saveState, pushLog } from './core/state.js';
+import { advanceSimulation } from './core/timeEngine.js';
+import { renderHud, renderLogs } from './ui/hud.js';
+import { renderCastleView } from './ui/castleView.js';
+import { renderWorldMapView } from './ui/worldMapView.js';
+import { renderBattleView } from './ui/battleModal.js';
+import { renderCommandView } from './ui/commandView.js';
+import { sound } from './audio/sound.js';
+
+let state = loadState();
+sound.enabled = state.soundEnabled !== false;
+advanceSimulation(state, Date.now(), false);
+saveState(state);
+
+let activeTab = 'castle';
+const filters = { realm: 'ALL', kind: 'ALL' };
+
+const appEl = document.getElementById('app');
+const hudEl = document.getElementById('hud');
+const viewEl = document.getElementById('view-container');
+const logListEl = document.getElementById('event-log');
+const toggleLogBtn = document.getElementById('btn-toggle-log');
+const realmFilterEl = document.getElementById('realm-filter');
+const kindFilterEl = document.getElementById('map-layer-filter');
+const cleanViewBtn = document.getElementById('btn-clean-view');
+const quickScoutBtn = document.getElementById('btn-quick-scout');
+
+function renderSystemView(container) {
+  const serialized = JSON.stringify(state);
+  container.innerHTML = `
+    <div class="card">
+      <h3>Темп, звук и сохранение</h3>
+      <div class="row" style="margin-bottom: 10px;">
+        <button id="btn-quick-mode" class="action-btn secondary" type="button">
+          Быстрый режим (x${BALANCE.quickModeMultiplier}): ${state.quickMode ? 'Вкл' : 'Выкл'}
+        </button>
+        <button id="btn-sound" class="action-btn secondary" type="button">
+          Звук (Web Audio): ${sound.enabled ? 'Вкл' : 'Выкл'}
+        </button>
+        <button id="btn-reset" class="action-btn danger" type="button">Сброс</button>
+      </div>
+      <label class="muted">Экспорт / импорт сейва (JSON)</label>
+      <textarea id="save-json" rows="4">${serialized}</textarea>
+      <div class="row" style="margin-top: 8px;">
+        <button id="btn-import" class="action-btn secondary" type="button">Импортировать JSON</button>
+      </div>
+    </div>
+  `;
+
+  container.querySelector('#btn-quick-mode')?.addEventListener('click', () => {
+    state.quickMode = !state.quickMode;
+    pushLog(state, `Быстрый режим: ${state.quickMode ? 'включён' : 'выключен'}`);
+    sound.click();
+    syncAndRender(false);
+  });
+
+  container.querySelector('#btn-sound')?.addEventListener('click', () => {
+    sound.enabled = !sound.enabled;
+    state.soundEnabled = sound.enabled;
+    if (sound.enabled) sound.click();
+    syncAndRender(false);
+  });
+
+  container.querySelector('#btn-reset')?.addEventListener('click', () => {
+    state = resetState();
+    activeTab = 'castle';
+    syncAndRender(false);
+  });
+
+  container.querySelector('#btn-import')?.addEventListener('click', () => {
+    const raw = container.querySelector('#save-json')?.value || '';
+    try {
+      const parsed = JSON.parse(raw);
+      state = { ...state, ...parsed };
+      advanceSimulation(state, Date.now(), false);
+      pushLog(state, 'Сейв импортирован.');
+      sound.success();
+      syncAndRender(false);
+    } catch {
+      pushLog(state, 'Ошибка формата JSON.');
+      sound.alert();
+      syncAndRender(false);
+    }
+  });
+}
+
+function render() {
+  appEl?.classList.toggle('clean-mode', Boolean(state.cleanView));
+  if (cleanViewBtn) {
+    cleanViewBtn.textContent = state.cleanView ? 'Обычный вид' : 'Чистый вид';
+  }
+  if (realmFilterEl) realmFilterEl.value = filters.realm;
+  if (kindFilterEl) kindFilterEl.value = filters.kind;
+
+  renderHud(hudEl, state);
+  renderLogs(logListEl, state);
+
+  document.querySelectorAll('.nav-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.tab === activeTab);
+  });
+
+  if (activeTab === 'castle') {
+    renderCastleView(viewEl, state, () => syncAndRender(false));
+  } else if (activeTab === 'map') {
+    renderWorldMapView(
+      viewEl,
+      state,
+      filters,
+      () => syncAndRender(false),
+      () => {
+        activeTab = 'battle';
+        syncAndRender(false);
+      }
+    );
+  } else if (activeTab === 'battle') {
+    renderBattleView(viewEl, state, () => syncAndRender(false));
+  } else if (activeTab === 'command') {
+    renderCommandView(viewEl, state, () => syncAndRender(false));
+  } else if (activeTab === 'system') {
+    renderSystemView(viewEl);
+  }
+}
+
+function syncAndRender(isLiveTick = false) {
+  advanceSimulation(state, Date.now(), isLiveTick);
+  saveState(state);
+  render();
+}
+
+document.querySelectorAll('.nav-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    activeTab = btn.dataset.tab;
+    sound.click();
+    render();
+  });
+});
+
+realmFilterEl?.addEventListener('change', (e) => {
+  filters.realm = e.target.value;
+  sound.click();
+  render();
+});
+
+kindFilterEl?.addEventListener('change', (e) => {
+  filters.kind = e.target.value;
+  sound.click();
+  render();
+});
+
+cleanViewBtn?.addEventListener('click', () => {
+  state.cleanView = !state.cleanView;
+  sound.click();
+  saveState(state);
+  render();
+});
+
+quickScoutBtn?.addEventListener('click', () => {
+  state.scoutedIds = BALANCE.mapTargets.map((t) => t.id);
+  pushLog(state, 'Разведка обновила данные по целям на карте.');
+  sound.success();
+  saveState(state);
+  render();
+});
+
+toggleLogBtn?.addEventListener('click', () => {
+  const collapsed = logListEl.classList.toggle('collapsed');
+  toggleLogBtn.textContent = collapsed ? 'Развернуть' : 'Свернуть';
+});
+
+setInterval(() => {
+  syncAndRender(true);
+}, BALANCE.tickIntervalMs);
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    syncAndRender(false);
+  }
+});
+
+render();
