@@ -40,7 +40,7 @@ function drawWorldCanvas(canvas, state, targets) {
     const ty = h * t.y;
     const isSel = t.id === state.selectedTargetId;
 
-    ctx.strokeStyle = isSel ? 'rgba(255, 209, 102, 0.5)' : 'rgba(255,255,255,0.14)';
+    ctx.strokeStyle = isSel ? 'rgba(255, 227, 153, 0.55)' : 'rgba(255,255,255,0.16)';
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
     ctx.moveTo(homeX, homeY);
@@ -54,7 +54,7 @@ function drawWorldCanvas(canvas, state, targets) {
       t.kind === 'OUTPOST' ? '#2ecc71' : t.kind === 'EVENT' ? '#f39c12' : '#e74c3c';
     ctx.fill();
     ctx.lineWidth = isSel ? 3 : 1.5;
-    ctx.strokeStyle = isSel ? '#ffd166' : '#111';
+    ctx.strokeStyle = isSel ? '#ffe399' : '#111';
     ctx.stroke();
 
     ctx.fillStyle = '#fff';
@@ -64,11 +64,11 @@ function drawWorldCanvas(canvas, state, targets) {
     ctx.fillText(icon, tx, ty + 4);
 
     ctx.font = 'bold 10px system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(12, 17, 24, 0.82)';
+    ctx.fillStyle = 'rgba(11, 15, 22, 0.86)';
     const label = t.name.slice(0, 18);
     const tw = ctx.measureText(label).width + 8;
     ctx.fillRect(tx - tw / 2, ty + 16, tw, 14);
-    ctx.fillStyle = isSel ? '#ffd166' : '#f1f2f6';
+    ctx.fillStyle = isSel ? '#ffe399' : '#f1f2f6';
     ctx.fillText(label, tx, ty + 26);
 
     hitBoxes.push({ id: t.id, x: tx, y: ty });
@@ -79,7 +79,7 @@ function drawWorldCanvas(canvas, state, targets) {
   ctx.fillStyle = '#3498db';
   ctx.fill();
   ctx.lineWidth = 2.5;
-  ctx.strokeStyle = '#ffd166';
+  ctx.strokeStyle = '#ffe399';
   ctx.stroke();
   ctx.fillStyle = '#fff';
   ctx.font = '14px system-ui, sans-serif';
@@ -127,7 +127,7 @@ export function renderWorldMapView(container, state, onMutate, onGoBattle) {
 
   container.innerHTML = `
     <div class="canvas-wrap">
-      <canvas id="world-canvas" width="480" height="250"></canvas>
+      <canvas id="world-canvas" width="500" height="252"></canvas>
       <div class="canvas-overlay-top">
         <span class="pill">🗺️ ${BALANCE.realms[state.activeRealm]?.name}</span>
         <span class="pill">🚩 Аванпостов: ${state.capturedOutposts.length}</span>
@@ -187,7 +187,7 @@ export function renderWorldMapView(container, state, onMutate, onGoBattle) {
       const clickX = ((e.clientX - rect.left) * canvas.width) / rect.width;
       const clickY = ((e.clientY - rect.top) * canvas.height) / rect.height;
       for (const box of canvas._hitBoxes || []) {
-        if (Math.hypot(clickX - box.x, clickY - box.y) < 30) {
+        if (Math.hypot(clickX - box.x, clickY - box.y) < 32) {
           state.selectedTargetId = box.id;
           sound.click();
           onMutate();

@@ -22,6 +22,7 @@ export function renderBattleView(container, state, onMutate) {
   const target = BALANCE.mapTargets.find((t) => t.id === state.selectedTargetId) || BALANCE.mapTargets[0];
   const cmd = getActiveCommander(state);
   const gear = getGearBonuses(state);
+  const realm = BALANCE.realms[state.activeRealm] || BALANCE.realms.great_empire;
   const wave = draftWaves[activeWaveIndex];
 
   container.innerHTML = `
@@ -42,6 +43,7 @@ export function renderBattleView(container, state, onMutate) {
         `
           )
           .join('')}
+        <button id="btn-clear-waves" class="mini-btn" type="button">Очистить</button>
       </div>
 
       <div class="flank-grid">
@@ -87,6 +89,26 @@ export function renderBattleView(container, state, onMutate) {
       </div>
     </div>
 
+    <div class="card">
+      <h3>PvP-рейды на замки игроков</h3>
+      ${BALANCE.rivals
+        .map((r) => {
+          const status = r.shielded ? '🛡️ Щит мира' : r.online ? '🟢 В сети' : '⚪ Оффлайн';
+          return `
+            <div class="map-node">
+              <div>
+                <strong>${r.name}</strong> <span class="muted">[${r.alliance}] • ${status}</span>
+                <div class="muted">Мощь: ${r.power} • Добыча: 🪵${r.loot.wood} 🪨${r.loot.stone} 🪙${r.loot.gold} 💎${r.loot.rubies}</div>
+              </div>
+              <button class="mini-btn gold" data-pvp-raid="${r.id}" ${r.shielded ? 'disabled' : ''} type="button">
+                Набег
+              </button>
+            </div>
+          `;
+        })
+        .join('')}
+    </div>
+
     ${
       simReport
         ? `
@@ -106,9 +128,9 @@ export function renderBattleView(container, state, onMutate) {
     ${
       state.lastReport
         ? `
-      <div class="card">
-        <h3>Последний боевой отчёт (${state.lastReport.targetName})</h3>
-        <p><strong>Результат:</strong> ${state.lastReport.victory ? 'Победа' : 'Поражение'}</p>
+      <div class="card parchment">
+        <h3>📜 Боевой отчёт: ${state.lastReport.targetName}</h3>
+        <p><strong>Результат:</strong> ${state.lastReport.victory ? '⚔️ Победа' : '🛡️ Поражение'}</p>
         ${state.lastReport.notes?.length ? `<p class="muted">${state.lastReport.notes.join('; ')}</p>` : ''}
         <p class="muted">Трофеи: 🪵${state.lastReport.loot.wood} 🪨${state.lastReport.loot.stone} 🌾${state.lastReport.loot.food} 🪙${state.lastReport.loot.gold} 💎${state.lastReport.loot.rubies || 0}</p>
       </div>
@@ -139,6 +161,13 @@ export function renderBattleView(container, state, onMutate) {
     });
   });
 
+  container.querySelector('#btn-clear-waves')?.addEventListener('click', () => {
+    draftWaves = Array.from({ length: maxWaves }, () => emptyWave());
+    simReport = null;
+    sound.click();
+    onMutate();
+  });
+
   container.querySelector('#btn-autofill')?.addEventListener('click', () => {
     draftWaves = Array.from({ length: maxWaves }, () => emptyWave());
     const perWaveMult = 1 / maxWaves;
@@ -161,7 +190,12 @@ export function renderBattleView(container, state, onMutate) {
 
   container.querySelector('#btn-simulate')?.addEventListener('click', () => {
     syncCurrentWaveInputs();
-    simReport = resolveSiegeBattle(draftWaves, target, { mutate: false, commander: cmd, gear });
+    simReport = resolveSiegeBattle(draftWaves, target, {
+      mutate: false,
+      commander: cmd,
+      gear,
+      realmAtkMult: realm.atkMult || 1
+    });
     sound.click();
     onMutate();
   });
@@ -222,5 +256,54 @@ export function renderBattleView(container, state, onMutate) {
     pushLog(state, `Армия выступила на штурм "${target.name}" (${Math.round(travelMs / 1000)}с).`);
     sound.march();
     onMutate();
+  });
+
+  container.querySelectorAll('[data-pvp-raid]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const rival = BALANCE.rivals.find((x) => x.id === btn.dataset.pvpRaid);
+      if (!rival || rival.shielded) return;
+      const myPow =
+        (state.troops.maceman || 0) * 16 +
+        (state.troops.crossbow || 0) * 21 +
+        (state.troops.knight || 0) * 34;
+      if (myPow <= 0) {
+        pushLog(state, 'Сначала наймите войска для PvP-рейда.');
+        sound.alert();
+        onMutate();
+        return;
+      }
+      const win = myPow >= rival.power * 0.72;
+      const lossRatio = win ? 0.16 : 0.42;
+      for (const uKey of Object.keys(BALANCE.units)) {
+        state.troops[uKey] = Math.max(0, Math.round((state.troops[uKey] || 0) * (1 - lossRatio)));
+      }
+      if (win) {
+        state.victoriesCount = (state.victoriesCount || 0) + 1;
+        state.allianceWarPoints = (state.allianceWarPoints || 0) + 35;
+        for (const [res, amt] of Object.entries(rival.loot)) {
+          state.resources[res] = (state.resources[res] || 0) + amt;
+        }
+        state.lastReport = {
+          targetName: `Замок: ${rival.name}`,
+          victory: true,
+          notes: ['Разграблена казна соперника и начислены очки войны альянса'],
+          loot: rival.loot,
+          at: Date.now()
+        };
+        pushLog(state, `PvP-набег на ${rival.name} успешен! Забраны трофеи и +35 очков войны.`);
+        sound.success();
+      } else {
+        state.lastReport = {
+          targetName: `Замок: ${rival.name}`,
+          victory: false,
+          notes: ['Гарнизон игрока отбил набег'],
+          loot: { wood: 0, stone: 0, food: 0, gold: 0, rubies: 0 },
+          at: Date.now()
+        };
+        pushLog(state, `PvP-набег на ${rival.name} отбит.`);
+        sound.alert();
+      }
+      onMutate();
+    });
   });
 }

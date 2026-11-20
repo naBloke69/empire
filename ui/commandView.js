@@ -3,6 +3,8 @@ import { pushLog } from '../core/state.js';
 import { sound } from '../audio/sound.js';
 
 export function renderCommandView(container, state, onMutate) {
+  const friends = state.friends || [];
+
   container.innerHTML = `
     <div class="card">
       <h3>Командиры походов</h3>
@@ -63,6 +65,25 @@ export function renderCommandView(container, state, onMutate) {
         })
         .join('')}
     </div>
+
+    <div class="card">
+      <h3>Союзники и друзья (${friends.length})</h3>
+      ${friends
+        .map(
+          (fname) => `
+          <div class="map-node">
+            <div>
+              <strong>${fname}</strong> <span class="muted">• 🟢 В сети</span>
+              <div class="muted">Отправка каравана поддержки союзнику</div>
+            </div>
+            <button class="mini-btn gold" data-send-caravan="${fname}" type="button">
+              Обоз (🪙50)
+            </button>
+          </div>
+        `
+        )
+        .join('')}
+    </div>
   `;
 
   container.querySelectorAll('[data-cmd]').forEach((btn) => {
@@ -93,6 +114,23 @@ export function renderCommandView(container, state, onMutate) {
       else list.add(id);
       state.equippedIds = [...list];
       sound.click();
+      onMutate();
+    });
+  });
+
+  container.querySelectorAll('[data-send-caravan]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const fname = btn.dataset.sendCaravan;
+      if ((state.resources.gold || 0) < 50) {
+        pushLog(state, 'Нужно 50 монет для отправки обоза союзнику.');
+        sound.alert();
+        onMutate();
+        return;
+      }
+      state.resources.gold -= 50;
+      state.allianceWarPoints = (state.allianceWarPoints || 0) + 10;
+      pushLog(state, `Отправлен торговый обоз союзнику ${fname} (+10 очков союза).`);
+      sound.success();
       onMutate();
     });
   });
