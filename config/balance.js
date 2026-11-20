@@ -7,57 +7,79 @@ export const BALANCE = {
     great_empire: {
       id: 'great_empire',
       name: 'Великая империя',
-      groundTop: '#457639',
-      groundBottom: '#2b4f23',
-      accent: '#6ab04c'
+      perkDesc: '+10% к общему порядку и баланс ресурсов',
+      orderBonus: 12,
+      prodMult: 1.05,
+      atkMult: 1.0,
+      wallMult: 1.0,
+      groundTop: '#4c7e3e',
+      groundBottom: '#2d5324',
+      accent: '#78e08f'
     },
     burning_sands: {
       id: 'burning_sands',
       name: 'Пылающие пески',
-      groundTop: '#cca35c',
-      groundBottom: '#9b7436',
-      accent: '#f0932b'
+      perkDesc: '+20% добыча золота и ускоренный марш (+10%)',
+      orderBonus: 0,
+      prodMult: 1.12,
+      atkMult: 1.05,
+      wallMult: 0.95,
+      marchMult: 1.1,
+      groundTop: '#cfa35a',
+      groundBottom: '#9b7232',
+      accent: '#f6b93b'
     },
     everwinter: {
       id: 'everwinter',
       name: 'Вечный холод',
-      groundTop: '#a4c2d4',
-      groundBottom: '#6f90a3',
-      accent: '#7ed6df'
+      perkDesc: '+20% прочность стен, но выше расход еды',
+      orderBonus: 5,
+      prodMult: 1.0,
+      atkMult: 1.0,
+      wallMult: 1.2,
+      foodUpkeepMult: 1.15,
+      groundTop: '#9fc0d4',
+      groundBottom: '#6a8ba0',
+      accent: '#82ccdd'
     },
     fire_peaks: {
       id: 'fire_peaks',
       name: 'Огненные вершины',
-      groundTop: '#633630',
-      groundBottom: '#381c19',
-      accent: '#eb4d4b'
+      perkDesc: '+18% сила атаки в штурмах и богатые трофеи',
+      orderBonus: 0,
+      prodMult: 1.08,
+      atkMult: 1.18,
+      wallMult: 1.05,
+      groundTop: '#6b3630',
+      groundBottom: '#3c1b17',
+      accent: '#ff6b6b'
     }
   },
 
   startingResources: {
-    wood: 800,
-    stone: 700,
-    food: 900,
-    gold: 600,
-    rubies: 180
+    wood: 850,
+    stone: 750,
+    food: 950,
+    gold: 650,
+    rubies: 190
   },
 
   startingTroops: {
-    maceman: 32,
-    crossbow: 24,
-    knight: 12
+    maceman: 35,
+    crossbow: 25,
+    knight: 15
   },
 
   startingTools: {
-    ladder: 14,
-    ram: 8,
-    mantlet: 8
+    ladder: 16,
+    ram: 10,
+    mantlet: 10
   },
 
   buildings: {
     keep: {
       name: 'Цитадель',
-      desc: 'Центр замка: открывает волны штурма, повышает вместимость склада и порядок.',
+      desc: 'Сердце замка: открывает волны штурма, повышает вместимость склада и порядок.',
       baseCost: { wood: 140, stone: 130, gold: 90 },
       baseTimeSec: 10,
       costScale: 1.45,
@@ -132,7 +154,7 @@ export const BALANCE = {
   units: {
     maceman: {
       name: 'Булавщик',
-      role: 'Ближний бой',
+      role: 'Ближний бой (силён против стрелков)',
       cost: { gold: 14, food: 8 },
       trainSec: 3,
       upkeepFoodPerMin: 0.45,
@@ -141,7 +163,7 @@ export const BALANCE = {
     },
     crossbow: {
       name: 'Арбалетчик',
-      role: 'Дальний бой',
+      role: 'Дальний бой (бьёт по рыцарям издалека)',
       cost: { gold: 18, food: 9 },
       trainSec: 4,
       upkeepFoodPerMin: 0.55,
@@ -150,7 +172,7 @@ export const BALANCE = {
     },
     knight: {
       name: 'Рыцарь',
-      role: 'Элита штурма',
+      role: 'Элита штурма (пробивает строй и стены)',
       cost: { gold: 34, food: 15 },
       trainSec: 6,
       upkeepFoodPerMin: 0.95,
@@ -229,15 +251,74 @@ export const BALANCE = {
     { id: 'res_fort', name: 'Каменная кладка', desc: '+15% защита стен замка', costGold: 135, atkBonus: 0, prodBonus: 0, wallBonus: 0.15 }
   ],
 
+  storyChapter: {
+    title: 'Глава I: Знамя над Четырьмя Королевствами',
+    summary: 'Укрепи цитадель, набери дружину, разбей башню разбойников и подними авторитет лорда.'
+  },
+
   quests: [
-    { id: 'q_build', title: 'Застройка королевства', desc: 'Доведите суммарный уровень построек замка до 14', target: 14, rewardGold: 180, rewardRubies: 20 },
-    { id: 'q_raid', title: 'Гроза разбойников', desc: 'Совершите 2 победоносных похода на карте', target: 2, rewardGold: 220, rewardRubies: 30 },
-    { id: 'q_order', title: 'Процветание подданных', desc: 'Достигните 210 общественного порядка', target: 210, rewardGold: 200, rewardRubies: 25 }
+    { id: 'q_build', chapter: 'Глава I', title: 'Застройка королевства', desc: 'Суммарный уровень построек замка: цель 14', target: 14, rewardGold: 180, rewardRubies: 20 },
+    { id: 'q_raid', chapter: 'Глава I', title: 'Гроза разбойников', desc: 'Победоносных походов на карте: цель 2', target: 2, rewardGold: 220, rewardRubies: 30 },
+    { id: 'q_order', chapter: 'Глава I', title: 'Процветание подданных', desc: 'Общественный порядок замка: цель 210', target: 210, rewardGold: 200, rewardRubies: 25 },
+    { id: 'q_spy', chapter: 'Глава II', title: 'Глаза и уши короны', desc: 'Разведанных целей на карте: цель 2', target: 2, rewardGold: 190, rewardRubies: 25 },
+    { id: 'q_outpost', chapter: 'Глава II', title: 'Властелин пограничья', desc: 'Захваченных аванпостов: цель 1', target: 1, rewardGold: 300, rewardRubies: 40 },
+    { id: 'q_keep4', chapter: 'Глава III', title: 'Сердце империи', desc: 'Уровень Цитадели: цель 4', target: 4, rewardGold: 350, rewardRubies: 50 }
   ],
 
   alliancePerks: [
     { id: 'al_war', name: 'Военный пакт', desc: '+10% к силе штурма всех флангов', costGold: 120, atkBonus: 0.10, prodBonus: 0 },
     { id: 'al_trade', name: 'Караванный союз', desc: '+15% к добыче ресурсов всей империи', costGold: 120, atkBonus: 0, prodBonus: 0.15 }
+  ],
+
+  rivals: [
+    {
+      id: 'rival_korsar',
+      name: 'Лорд Корсар',
+      alliance: 'Багровая корона',
+      power: 420,
+      online: true,
+      shielded: false,
+      loot: { wood: 220, stone: 190, food: 180, gold: 240, rubies: 6 },
+      defense: {
+        left: { maceman: 12, crossbow: 8, knight: 2 },
+        center: { maceman: 16, crossbow: 12, knight: 4 },
+        right: { maceman: 12, crossbow: 8, knight: 2 }
+      }
+    },
+    {
+      id: 'rival_valeria',
+      name: 'Леди Валерия',
+      alliance: 'Железный легион',
+      power: 560,
+      online: true,
+      shielded: false,
+      loot: { wood: 290, stone: 270, food: 250, gold: 310, rubies: 9 },
+      defense: {
+        left: { maceman: 16, crossbow: 14, knight: 4 },
+        center: { maceman: 22, crossbow: 16, knight: 6 },
+        right: { maceman: 16, crossbow: 14, knight: 4 }
+      }
+    },
+    {
+      id: 'rival_torin',
+      name: 'Барон Торин',
+      alliance: 'Хранители Севера',
+      power: 740,
+      online: false,
+      shielded: true,
+      loot: { wood: 380, stone: 360, food: 320, gold: 420, rubies: 14 },
+      defense: {
+        left: { maceman: 22, crossbow: 18, knight: 6 },
+        center: { maceman: 28, crossbow: 22, knight: 9 },
+        right: { maceman: 22, crossbow: 18, knight: 6 }
+      }
+    }
+  ],
+
+  marketOffers: [
+    { id: 'mk_1', seller: 'Торговец Марк', give: 'wood', giveAmt: 220, want: 'gold', wantAmt: 130 },
+    { id: 'mk_2', seller: 'Караванщик Рашид', give: 'stone', giveAmt: 200, want: 'gold', wantAmt: 145 },
+    { id: 'mk_3', seller: 'Амбар Севера', give: 'food', giveAmt: 260, want: 'wood', wantAmt: 170 }
   ],
 
   mapTargets: [
