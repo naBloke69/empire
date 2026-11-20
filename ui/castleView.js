@@ -4,11 +4,137 @@ import {
   getBuildingCost,
   getBuildingTimeSec,
   getEconomyStats,
-  packReserve,
-  unpackReserve
+  getMaxAttackWaves
 } from '../core/economy.js';
 import { pushLog } from '../core/state.js';
 import { sound } from '../audio/sound.js';
+
+function isoToScreen(gx, gy, cx, cy) {
+  const tileW = 68;
+  const tileH = 34;
+  return {
+    x: cx + (gx - gy) * tileW,
+    y: cy + (gx + gy) * tileH
+  };
+}
+
+function drawIsoDiamond(ctx, x, y, w, h, fill, stroke = null) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - h);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x, y + h);
+  ctx.lineTo(x - w, y);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
+function drawBuildingSprite(ctx, slot, pos, isSelected, isBuilding) {
+  const { x, y } = pos;
+  const lvl = slot.level;
+  const h = 14 + Math.min(24, lvl * 4);
+
+  drawIsoDiamond(ctx, x, y + 6, 34, 17, 'rgba(0,0,0,0.32)');
+
+  const palette = {
+    keep: { top: '#e5b55c', left: '#9e7430', right: '#78551f', roof: '#b33939' },
+    wall: { top: '#b2bec3', left: '#7f8fa6', right: '#636e72', roof: '#4b5563' },
+    barracks: { top: '#d980fa', left: '#833471', right: '#6f1e51', roof: '#a3293d' },
+    workshop: { top: '#f3a683', left: '#cf6a87', right: '#9b435c', roof: '#774936' },
+    farm: { top: '#badc58', left: '#6ab04c', right: '#4b8a34', roof: '#e1b12c' },
+    sawmill: { top: '#d19c66', left: '#8c5a2b', right: '#663f1c', roof: '#4e342e' },
+    quarry: { top: '#95afc0', left: '#535c68', right: '#3b424c', roof: '#576574' },
+    tavern: { top: '#7ed6df', left: '#22a6b3', right: '#167c87', roof: '#c23616' }
+  }[slot.type] || { top: '#ccc', left: '#888', right: '#666', roof: '#933' };
+
+  // Left wall
+  ctx.beginPath();
+  ctx.moveTo(x - 26, y);
+  ctx.lineTo(x, y + 13);
+  ctx.lineTo(x, y + 13 - h);
+  ctx.lineTo(x - 26, y - h);
+  ctx.closePath();
+  ctx.fillStyle = palette.left;
+  ctx.fill();
+
+  // Right wall
+  ctx.beginPath();
+  ctx.moveTo(x + 26, y);
+  ctx.lineTo(x, y + 13);
+  ctx.lineTo(x, y + 13 - h);
+  ctx.lineTo(x + 26, y - h);
+  ctx.closePath();
+  ctx.fillStyle = palette.right;
+  ctx.fill();
+
+  // Roof
+  drawIsoDiamond(ctx, x, y - h, 26, 13, palette.top, '#1e272e');
+
+  // Keep spire
+  if (slot.type === 'keep') {
+    ctx.beginPath();
+    ctx.moveTo(x, y - h - 18);
+    ctx.lineTo(x + 12, y - h - 2);
+    ctx.lineTo(x - 12, y - h - 2);
+    ctx.closePath();
+    ctx.fillStyle = palette.roof;
+    ctx.fill();
+  }
+
+  if (isSelected) {
+    drawIsoDiamond(ctx, x, y + 4, 38, 19, 'rgba(255, 215, 100, 0.14)', '#ffd166');
+  }
+
+  // Badge label
+  const shortName = BALANCE.buildings[slot.type].name.split(' ')[0];
+  ctx.font = 'bold 10px system-ui, sans-serif';
+  const label = isBuilding ? `🔨 ${shortName}` : `${shortName} ур.${lvl}`;
+  const tw = ctx.measureText(label).width + 10;
+  ctx.fillStyle = 'rgba(13, 18, 25, 0.85)';
+  ctx.fillRect(x - tw / 2, y + 14, tw, 15);
+  ctx.fillStyle = isSelected ? '#ffd166' : '#f1f2f6';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x, y + 25);
+}
+
+function drawCastleCanvas(canvas, state) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const realm = BALANCE.realms[state.activeRealm] || BALANCE.realms.great_empire;
+
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, realm.groundTop);
+  grad.addColorStop(1, realm.groundBottom);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  const cx = w / 2;
+  const cy = h / 2 + 12;
+
+  // Moat & outer fortress courtyard
+  drawIsoDiamond(ctx, cx, cy + 4, 196, 98, 'rgba(32, 118, 168, 0.45)', '#4ea8de');
+  drawIsoDiamond(ctx, cx, cy + 2, 174, 87, 'rgba(255, 240, 200, 0.12)', '#95a5a6');
+
+  // Sort slots back-to-front by (gx + gy)
+  const sorted = [...state.slots].sort((a, b) => a.gx + a.gy - (b.gx + b.gy));
+  const hitBoxes = [];
+
+  for (const slot of sorted) {
+    const pos = isoToScreen(slot.gx, slot.gy, cx, cy);
+    const isSelected = slot.id === state.selectedSlotId;
+    const isBuilding = state.buildQueue?.slotId === slot.id;
+    drawBuildingSprite(ctx, slot, pos, isSelected, isBuilding);
+    hitBoxes.push({ id: slot.id, x: pos.x, y: pos.y });
+  }
+
+  canvas._hitBoxes = hitBoxes;
+}
 
 export function renderCastleView(container, state, onMutate) {
   const now = Date.now();
@@ -20,82 +146,55 @@ export function renderCastleView(container, state, onMutate) {
   const timeSec = getBuildingTimeSec(slot.type, nextLevel, state);
   const affordable = canAfford(state.resources, cost);
   const busyBuild = Boolean(state.buildQueue);
+  const wavesCount = getMaxAttackWaves(state);
 
   const buildStatusText = state.buildQueue
-    ? `Строится: ${BALANCE.buildings[state.buildQueue.type]?.name} (ур. ${state.buildQueue.targetLevel}) — ${Math.max(0, Math.ceil((state.buildQueue.endsAt - now) / 1000))}с`
+    ? `Строится: ${BALANCE.buildings[state.buildQueue.type]?.name} → ур.${state.buildQueue.targetLevel} (${Math.max(0, Math.ceil((state.buildQueue.endsAt - now) / 1000))}с)`
     : 'Слот стройки свободен';
 
   const trainStatusText = state.trainQueue
-    ? `Вербовка: ${state.trainQueue.count}x ${BALANCE.units[state.trainQueue.unitType]?.name} — ${Math.max(0, Math.ceil((state.trainQueue.totalEndsAt - now) / 1000))}с`
-    : 'Казармы свободны';
+    ? `Очередь: ${state.trainQueue.count}x ${
+        state.trainQueue.category === 'unit'
+          ? BALANCE.units[state.trainQueue.itemKey]?.name
+          : BALANCE.tools[state.trainQueue.itemKey]?.name
+      } (${Math.max(0, Math.ceil((state.trainQueue.totalEndsAt - now) / 1000))}с)`
+    : 'Казармы и мастерская свободны';
 
   container.innerHTML = `
-    <div class="card">
-      <h3>Специализация и пресеты замка</h3>
-      <p class="muted">Защита стен: +${Math.round(econ.wallDefenseBonus * 100)}% • Скорость вербовки: +${Math.round(econ.trainSpeedBonus * 100)}%</p>
-      <div class="row" style="margin-bottom: 8px;">
-        ${Object.entries(BALANCE.specializations)
-          .map(
-            ([key, s]) => `
-          <button class="mini-btn" data-spec="${key}" type="button">
-            ${state.specialization === key ? '★ ' : ''}${s.name}
-          </button>
-        `
-          )
-          .join('')}
-      </div>
-      <div class="row">
-        <button id="btn-preset-eco" class="action-btn secondary" type="button">Пресет: Экономика</button>
-        <button id="btn-preset-war" class="action-btn secondary" type="button">Пресет: Армия и осада</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>Сетка построек</h3>
-      <div class="grid-slots">
-        ${state.slots
-          .map((s) => {
-            const b = BALANCE.buildings[s.type];
-            return `
-              <button class="slot-btn ${s.id === slot.id ? 'active-slot' : ''}" data-slot="${s.id}" type="button">
-                <strong>${b.name}</strong>
-                <span class="muted">Уровень ${s.level}</span>
-              </button>
-            `;
-          })
-          .join('')}
+    <div class="canvas-wrap">
+      <canvas id="castle-canvas" width="480" height="270"></canvas>
+      <div class="canvas-overlay-top">
+        <span class="pill">🏰 ${BALANCE.realms[state.activeRealm]?.name}</span>
+        <span class="pill">🌊 Волн атаки: ${wavesCount} • 🛡️ Стены: +${Math.round(econ.wallDefenseBonus * 100)}%</span>
       </div>
     </div>
 
     <div class="card">
       <h3>${cfg.name} (Ур. ${slot.level} → ${nextLevel})</h3>
-      <p class="muted">Цена: Д:${cost.wood || 0} К:${cost.stone || 0} М:${cost.gold || 0} • Время: ${timeSec}с</p>
-      <p class="muted">${buildStatusText}</p>
-      <button id="btn-upgrade" class="action-btn" ${!affordable || busyBuild ? 'disabled' : ''} type="button">
-        Улучшить до ур. ${nextLevel}
-      </button>
+      <p class="muted">${cfg.desc}</p>
+      <p class="muted">Цена: 🪵${cost.wood || 0} 🪨${cost.stone || 0} 🪙${cost.gold || 0} • Время: ${timeSec}с • ${buildStatusText}</p>
+      <div class="row">
+        <button id="btn-upgrade" class="action-btn" ${!affordable || busyBuild ? 'disabled' : ''} type="button">
+          Улучшить до ур. ${nextLevel}
+        </button>
+      </div>
     </div>
 
     <div class="card">
-      <h3>Казармы — Вербовка</h3>
+      <h3>Казармы — Найм армии</h3>
       <p class="muted">${trainStatusText}</p>
       <div class="row">
         ${Object.entries(BALANCE.units)
           .map(([uKey, uCfg]) => {
-            const count = 5;
-            const unitCost = {
-              wood: (uCfg.cost.wood || 0) * count,
-              stone: (uCfg.cost.stone || 0) * count,
-              food: (uCfg.cost.food || 0) * count,
-              gold: (uCfg.cost.gold || 0) * count
+            const cnt = 5;
+            const uCost = {
+              gold: (uCfg.cost.gold || 0) * cnt,
+              food: (uCfg.cost.food || 0) * cnt
             };
-            const canTrain = !state.trainQueue && canAfford(state.resources, unitCost);
-            const speedDiv = 1 + Math.max(0, econ.trainSpeedBonus);
-            const quickDiv = state.quickMode ? BALANCE.quickModeMultiplier : 1;
-            const sec = Math.max(2, Math.round((uCfg.trainSec * count) / speedDiv / quickDiv));
+            const canTrain = !state.trainQueue && canAfford(state.resources, uCost);
             return `
-              <button class="action-btn secondary" data-train="${uKey}" ${canTrain ? '' : 'disabled'} type="button">
-                +5 ${uCfg.name} (${sec}с)
+              <button class="action-btn secondary" data-train-unit="${uKey}" ${canTrain ? '' : 'disabled'} type="button">
+                +5 ${uCfg.name} (🪙${uCost.gold})
               </button>
             `;
           })
@@ -104,69 +203,55 @@ export function renderCastleView(container, state, onMutate) {
     </div>
 
     <div class="card">
-      <h3>Резерв и автологистика</h3>
-      <p class="muted">Защищённые ресурсы не сгорают при минусовой еде или набеге.</p>
+      <h3>Осадная мастерская — Орудия штурма</h3>
+      <p class="muted">В наличии: Лестницы ${state.tools.ladder || 0} • Тараны ${state.tools.ram || 0} • Щиты ${state.tools.mantlet || 0}</p>
       <div class="row">
-        <button id="btn-pack-food" class="action-btn secondary" type="button">В резерв (+100 еды)</button>
-        <button id="btn-unpack-food" class="action-btn secondary" type="button">На склад (+100 еды)</button>
-        <button id="btn-toggle-logistics" class="mini-btn" type="button">
-          Авто-резерв: ${state.autoLogisticsEnabled ? 'Вкл' : 'Выкл'}
-        </button>
+        ${Object.entries(BALANCE.tools)
+          .map(([tKey, tCfg]) => {
+            const cnt = 4;
+            const tCost = {
+              wood: (tCfg.cost.wood || 0) * cnt,
+              stone: (tCfg.cost.stone || 0) * cnt,
+              gold: (tCfg.cost.gold || 0) * cnt
+            };
+            const canCraft = !state.trainQueue && canAfford(state.resources, tCost);
+            return `
+              <button class="action-btn secondary" data-craft-tool="${tKey}" ${canCraft ? '' : 'disabled'} type="button">
+                +4 ${tCfg.name}
+              </button>
+            `;
+          })
+          .join('')}
       </div>
     </div>
   `;
 
-  container.querySelectorAll('[data-spec]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.specialization = btn.dataset.spec;
-      pushLog(state, `Выбрана специализация: ${BALANCE.specializations[state.specialization].name}`);
-      sound.click();
-      onMutate();
+  const canvas = container.querySelector('#castle-canvas');
+  if (canvas) {
+    drawCastleCanvas(canvas, state);
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const clickX = (e.clientX - rect.left) * scaleX;
+      const clickY = (e.clientY - rect.top) * scaleY;
+
+      let best = null;
+      let bestDist = 42;
+      for (const box of canvas._hitBoxes || []) {
+        const d = Math.hypot(clickX - box.x, clickY - box.y);
+        if (d < bestDist) {
+          bestDist = d;
+          best = box.id;
+        }
+      }
+      if (best) {
+        state.selectedSlotId = best;
+        sound.click();
+        onMutate();
+      }
     });
-  });
-
-  const applyPreset = (presetKey) => {
-    const preset = BALANCE.buildPresets[presetKey];
-    if (!preset) return;
-    const candidate = preset.priority
-      .map((type) => state.slots.find((s) => s.type === type))
-      .find((s) => s && canAfford(state.resources, getBuildingCost(s.type, s.level + 1)));
-
-    if (!candidate) {
-      pushLog(state, `По "${preset.name}" пока не хватает ресурсов ни на одно улучшение.`);
-      sound.alert();
-      onMutate();
-      return;
-    }
-
-    state.selectedSlotId = candidate.id;
-    if (!state.buildQueue) {
-      const nextLvl = candidate.level + 1;
-      const c = getBuildingCost(candidate.type, nextLvl);
-      const t = getBuildingTimeSec(candidate.type, nextLvl, state);
-      for (const [k, v] of Object.entries(c)) state.resources[k] -= v;
-      state.buildQueue = {
-        slotId: candidate.id,
-        type: candidate.type,
-        targetLevel: nextLvl,
-        endsAt: Date.now() + t * 1000
-      };
-      pushLog(state, `${preset.name}: начат апгрейд "${BALANCE.buildings[candidate.type].name}" до ур. ${nextLvl}`);
-      sound.click();
-    }
-    onMutate();
-  };
-
-  container.querySelector('#btn-preset-eco')?.addEventListener('click', () => applyPreset('eco'));
-  container.querySelector('#btn-preset-war')?.addEventListener('click', () => applyPreset('war'));
-
-  container.querySelectorAll('[data-slot]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.selectedSlotId = btn.dataset.slot;
-      sound.click();
-      onMutate();
-    });
-  });
+  }
 
   container.querySelector('#btn-upgrade')?.addEventListener('click', () => {
     if (state.buildQueue || !canAfford(state.resources, cost)) return;
@@ -177,60 +262,57 @@ export function renderCastleView(container, state, onMutate) {
       targetLevel: nextLevel,
       endsAt: Date.now() + timeSec * 1000
     };
-    pushLog(state, `Начато улучшение "${cfg.name}" до ур. ${nextLevel}`);
+    pushLog(state, `Начато строительство: "${cfg.name}" до ур. ${nextLevel}`);
     sound.click();
     onMutate();
   });
 
-  container.querySelectorAll('[data-train]').forEach((btn) => {
+  container.querySelectorAll('[data-train-unit]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const uKey = btn.dataset.train;
+      const uKey = btn.dataset.trainUnit;
       const uCfg = BALANCE.units[uKey];
       const count = 5;
-      const unitCost = {
-        wood: (uCfg.cost.wood || 0) * count,
-        stone: (uCfg.cost.stone || 0) * count,
-        food: (uCfg.cost.food || 0) * count,
-        gold: (uCfg.cost.gold || 0) * count
-      };
-      if (state.trainQueue || !canAfford(state.resources, unitCost)) return;
-      for (const [k, v] of Object.entries(unitCost)) state.resources[k] -= v;
+      const uCost = { gold: (uCfg.cost.gold || 0) * count, food: (uCfg.cost.food || 0) * count };
+      if (state.trainQueue || !canAfford(state.resources, uCost)) return;
+      for (const [k, v] of Object.entries(uCost)) state.resources[k] -= v;
       const speedDiv = 1 + Math.max(0, econ.trainSpeedBonus);
       const quickDiv = state.quickMode ? BALANCE.quickModeMultiplier : 1;
       const totalSec = Math.max(2, Math.round((uCfg.trainSec * count) / speedDiv / quickDiv));
       state.trainQueue = {
-        unitType: uKey,
+        category: 'unit',
+        itemKey: uKey,
         count,
-        eachSec: uCfg.trainSec,
         totalEndsAt: Date.now() + totalSec * 1000
       };
-      pushLog(state, `Запущена вербовка: ${count}x ${uCfg.name}`);
+      pushLog(state, `Казармы: начат найм ${count}x ${uCfg.name}`);
       sound.click();
       onMutate();
     });
   });
 
-  container.querySelector('#btn-pack-food')?.addEventListener('click', () => {
-    if (packReserve(state, 'food', 100) > 0) {
-      pushLog(state, 'Отложено в резерв: 100 еды');
+  container.querySelectorAll('[data-craft-tool]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tKey = btn.dataset.craftTool;
+      const tCfg = BALANCE.tools[tKey];
+      const count = 4;
+      const tCost = {
+        wood: (tCfg.cost.wood || 0) * count,
+        stone: (tCfg.cost.stone || 0) * count,
+        gold: (tCfg.cost.gold || 0) * count
+      };
+      if (state.trainQueue || !canAfford(state.resources, tCost)) return;
+      for (const [k, v] of Object.entries(tCost)) state.resources[k] -= v;
+      const quickDiv = state.quickMode ? BALANCE.quickModeMultiplier : 1;
+      const totalSec = Math.max(2, Math.round(8 / quickDiv));
+      state.trainQueue = {
+        category: 'tool',
+        itemKey: tKey,
+        count,
+        totalEndsAt: Date.now() + totalSec * 1000
+      };
+      pushLog(state, `Мастерская: заказано ${count}x ${tCfg.name}`);
       sound.click();
       onMutate();
-    }
-  });
-
-  container.querySelector('#btn-unpack-food')?.addEventListener('click', () => {
-    if (unpackReserve(state, 'food', 100) > 0) {
-      pushLog(state, 'Переведено на склад: 100 еды');
-      sound.click();
-      onMutate();
-    }
-  });
-
-  container.querySelector('#btn-toggle-logistics')?.addEventListener('click', () => {
-    state.autoLogisticsEnabled = !state.autoLogisticsEnabled;
-    pushLog(state, `Авто-резерв еды: ${state.autoLogisticsEnabled ? 'включён' : 'выключен'}`);
-    sound.click();
-    onMutate();
+    });
   });
 }
-

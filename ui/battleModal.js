@@ -1,63 +1,101 @@
 import { BALANCE } from '../config/balance.js';
-import { emptyFlanks, resolveFlankBattle } from '../core/combat.js';
-import { getActiveCommander, getEconomyStats } from '../core/economy.js';
+import { emptyWave, resolveSiegeBattle } from '../core/combat.js';
+import { getActiveCommander, getMaxAttackWaves } from '../core/economy.js';
 import { getMarchDurationMs } from '../core/timeEngine.js';
 import { pushLog } from '../core/state.js';
 import { sound } from '../audio/sound.js';
 
-let draftFlanks = emptyFlanks();
-let lastSimResult = null;
+let draftWaves = [emptyWave()];
+let activeWaveIndex = 0;
+let simReport = null;
+
+function ensureWaveSlots(count) {
+  while (draftWaves.length < count) draftWaves.push(emptyWave());
+  if (draftWaves.length > count) draftWaves.length = count;
+  if (activeWaveIndex >= count) activeWaveIndex = 0;
+}
 
 export function renderBattleView(container, state, onMutate) {
+  const maxWaves = getMaxAttackWaves(state);
+  ensureWaveSlots(maxWaves);
+
   const target = BALANCE.mapTargets.find((t) => t.id === state.selectedTargetId) || BALANCE.mapTargets[0];
   const cmd = getActiveCommander(state);
-  const spec = BALANCE.specializations[state.specialization] || BALANCE.specializations.balanced;
-  const econ = getEconomyStats(state);
-  const marchSec = Math.round(getMarchDurationMs(state, target.distanceTiles) / 1000);
+  const wave = draftWaves[activeWaveIndex];
 
   container.innerHTML = `
     <div class="card">
-      <h3>Распределение по секторам — ${target.name}</h3>
-      <p class="muted">Войска: М:${state.troops.melee} Л:${state.troops.ranged} О:${state.troops.siege} • Командир: ${cmd.name} • Марш: ~${marchSec}с</p>
+      <h3>Штурм: ${target.name}</h3>
+      <p class="muted">
+        Армия: Б:${state.troops.maceman} А:${state.troops.crossbow} Р:${state.troops.knight} •
+        Орудия: Л:${state.tools.ladder} Т:${state.tools.ram} Щ:${state.tools.mantlet}
+      </p>
+
+      <div class="row" style="margin-bottom:8px;">
+        ${draftWaves
+          .map(
+            (_, idx) => `
+          <button class="mini-btn ${idx === activeWaveIndex ? 'gold' : ''}" data-wave="${idx}" type="button">
+            Волна ${idx + 1}
+          </button>
+        `
+          )
+          .join('')}
+      </div>
+
       <div class="flank-grid">
         ${['left', 'center', 'right']
           .map((sec) => {
-            const label = sec === 'left' ? 'Левый фланг' : sec === 'right' ? 'Правый фланг' : 'Центр';
+            const title = sec === 'left' ? 'Левый фланг' : sec === 'right' ? 'Правый фланг' : 'Центр (ворота)';
             return `
               <div class="flank-box">
-                <strong>${label}</strong>
-                ${Object.keys(BALANCE.units)
-                  .map((uKey) => {
-                    const uCfg = BALANCE.units[uKey];
-                    return `
-                      <label class="muted">${uCfg.name}
-                        <input type="number" min="0" max="999" data-sec="${sec}" data-unit="${uKey}" value="${draftFlanks[sec][uKey] || 0}" />
-                      </label>
-                    `;
-                  })
+                <strong>${title}</strong>
+                ${Object.entries(BALANCE.units)
+                  .map(
+                    ([uKey, uCfg]) => `
+                  <label>${uCfg.name}
+                    <input type="number" min="0" max="999" data-sec="${sec}" data-unit="${uKey}" value="${wave.flanks[sec][uKey] || 0}" />
+                  </label>
+                `
+                  )
                   .join('')}
               </div>
             `;
           })
           .join('')}
       </div>
-      <div class="row" style="margin-top: 10px;">
-        <button id="btn-auto-split" class="action-btn secondary" type="button">Авто-раскладка</button>
-        <button id="btn-sim" class="action-btn secondary" type="button">Симулятор</button>
-        <button id="btn-launch" class="action-btn" type="button">В поход</button>
+
+      <div class="flank-grid" style="margin-top:6px;">
+        ${Object.entries(BALANCE.tools)
+          .map(
+            ([tKey, tCfg]) => `
+          <div class="flank-box">
+            <label>${tCfg.name}
+              <input type="number" min="0" max="99" data-tool="${tKey}" value="${wave.tools[tKey] || 0}" />
+            </label>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+
+      <div class="row" style="margin-top:8px;">
+        <button id="btn-autofill" class="action-btn secondary" type="button">Автоподбор</button>
+        <button id="btn-simulate" class="action-btn secondary" type="button">Симуляция</button>
+        <button id="btn-attack" class="action-btn" type="button">⚔️ В атаку (${cmd.name})</button>
       </div>
     </div>
 
     ${
-      lastSimResult
+      simReport
         ? `
       <div class="card">
-        <h3>Результат симулятора (без потерь)</h3>
-        <p><strong>Прогноз:</strong> ${lastSimResult.victory ? 'Победа' : 'Поражение'} (${lastSimResult.atkWonSectors}/3 секторов)</p>
+        <h3>Прогноз симулятора</h3>
+        <p><strong>Итог:</strong> ${simReport.victory ? '✅ Победа' : '❌ Поражение'} (${simReport.wonCount}/3 секторов)</p>
         ${
-          lastSimResult.bottlenecks.length
-            ? `<p class="muted">Слабые места: ${lastSimResult.bottlenecks.join('; ')}</p>`
-            : '<p class="muted">Все сектора сбалансированы.</p>'
+          simReport.notes.length
+            ? `<p class="muted">${simReport.notes.join('; ')}</p>`
+            : '<p class="muted">Стены и ворота успешно пробиты!</p>'
         }
       </div>
     `
@@ -68,106 +106,120 @@ export function renderBattleView(container, state, onMutate) {
       state.lastReport
         ? `
       <div class="card">
-        <h3>Последний отчёт боя (${state.lastReport.targetName})</h3>
-        <p><strong>Итог:</strong> ${state.lastReport.victory ? 'Победа' : 'Поражение'}</p>
-        ${
-          state.lastReport.bottlenecks?.length
-            ? `<p class="muted">Разбор: ${state.lastReport.bottlenecks.join('; ')}</p>`
-            : ''
-        }
-        <p class="muted">Трофеи: Д:${state.lastReport.loot.wood} К:${state.lastReport.loot.stone} Е:${state.lastReport.loot.food} М:${state.lastReport.loot.gold}</p>
+        <h3>Последний боевой отчёт (${state.lastReport.targetName})</h3>
+        <p><strong>Результат:</strong> ${state.lastReport.victory ? 'Победа' : 'Поражение'}</p>
+        ${state.lastReport.notes?.length ? `<p class="muted">${state.lastReport.notes.join('; ')}</p>` : ''}
+        <p class="muted">Трофеи: 🪵${state.lastReport.loot.wood} 🪨${state.lastReport.loot.stone} 🌾${state.lastReport.loot.food} 🪙${state.lastReport.loot.gold} 💎${state.lastReport.loot.rubies || 0}</p>
       </div>
     `
         : ''
     }
   `;
 
-  const readInputs = () => {
-    const next = emptyFlanks();
+  const syncCurrentWaveInputs = () => {
     container.querySelectorAll('input[data-sec]').forEach((inp) => {
-      const sec = inp.dataset.sec;
-      const unit = inp.dataset.unit;
-      next[sec][unit] = Math.max(0, parseInt(inp.value || '0', 10) || 0);
+      wave.flanks[inp.dataset.sec][inp.dataset.unit] = Math.max(0, parseInt(inp.value || '0', 10) || 0);
     });
-    draftFlanks = next;
-    return next;
+    container.querySelectorAll('input[data-tool]').forEach((inp) => {
+      wave.tools[inp.dataset.tool] = Math.max(0, parseInt(inp.value || '0', 10) || 0);
+    });
   };
 
-  container.querySelectorAll('input[data-sec]').forEach((inp) => {
-    inp.addEventListener('change', readInputs);
+  container.querySelectorAll('input').forEach((inp) => {
+    inp.addEventListener('change', syncCurrentWaveInputs);
   });
 
-  container.querySelector('#btn-auto-split')?.addEventListener('click', () => {
-    const next = emptyFlanks();
-    for (const uKey of Object.keys(BALANCE.units)) {
-      const total = state.troops[uKey] || 0;
-      const each = Math.floor(total / 3);
-      next.left[uKey] = each;
-      next.right[uKey] = each;
-      next.center[uKey] = total - each * 2;
-    }
-    draftFlanks = next;
-    sound.click();
-    onMutate();
-  });
-
-  container.querySelector('#btn-sim')?.addEventListener('click', () => {
-    const flanks = readInputs();
-    lastSimResult = resolveFlankBattle(flanks, target.defense, {
-      mutate: false,
-      wallBonus: econ.wallDefenseBonus,
-      atkMult: (cmd.atkMult || 1) * (spec.atkMult || 1),
-      siegeMult: cmd.siegeMult || 1,
-      fatigue: state.fatigue || 0
+  container.querySelectorAll('[data-wave]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      syncCurrentWaveInputs();
+      activeWaveIndex = parseInt(btn.dataset.wave, 10) || 0;
+      sound.click();
+      onMutate();
     });
-    sound.click();
-    onMutate();
   });
 
-  container.querySelector('#btn-launch')?.addEventListener('click', () => {
-    const flanks = readInputs();
-    const totalNeeded = { melee: 0, ranged: 0, siege: 0 };
-    for (const sec of ['left', 'center', 'right']) {
-      for (const uKey of Object.keys(totalNeeded)) {
-        totalNeeded[uKey] += flanks[sec][uKey] || 0;
+  container.querySelector('#btn-autofill')?.addEventListener('click', () => {
+    draftWaves = Array.from({ length: maxWaves }, () => emptyWave());
+    const perWaveMult = 1 / maxWaves;
+    for (let i = 0; i < maxWaves; i++) {
+      const w = draftWaves[i];
+      for (const uKey of Object.keys(BALANCE.units)) {
+        const avail = Math.floor((state.troops[uKey] || 0) * perWaveMult);
+        const each = Math.floor(avail / 3);
+        w.flanks.left[uKey] = each;
+        w.flanks.right[uKey] = each;
+        w.flanks.center[uKey] = avail - each * 2;
+      }
+      for (const tKey of Object.keys(BALANCE.tools)) {
+        w.tools[tKey] = Math.floor((state.tools[tKey] || 0) / maxWaves);
       }
     }
+    sound.click();
+    onMutate();
+  });
 
-    const totalCount = totalNeeded.melee + totalNeeded.ranged + totalNeeded.siege;
-    if (totalCount <= 0) {
-      pushLog(state, 'Распределите хотя бы один отряд перед отправкой.');
+  container.querySelector('#btn-simulate')?.addEventListener('click', () => {
+    syncCurrentWaveInputs();
+    simReport = resolveSiegeBattle(draftWaves, target, { mutate: false, commander: cmd });
+    sound.click();
+    onMutate();
+  });
+
+  container.querySelector('#btn-attack')?.addEventListener('click', () => {
+    syncCurrentWaveInputs();
+    const usedUnits = { maceman: 0, crossbow: 0, knight: 0 };
+    const usedTools = { ladder: 0, ram: 0, mantlet: 0 };
+
+    for (const w of draftWaves) {
+      for (const sec of ['left', 'center', 'right']) {
+        for (const uKey of Object.keys(usedUnits)) usedUnits[uKey] += w.flanks[sec][uKey] || 0;
+      }
+      for (const tKey of Object.keys(usedTools)) usedTools[tKey] += w.tools[tKey] || 0;
+    }
+
+    const totalTroops = Object.values(usedUnits).reduce((a, b) => a + b, 0);
+    if (totalTroops <= 0) {
+      pushLog(state, 'Назначьте войска хотя бы в одну волну.');
       sound.alert();
       onMutate();
       return;
     }
 
-    for (const uKey of Object.keys(totalNeeded)) {
-      if ((state.troops[uKey] || 0) < totalNeeded[uKey]) {
-        pushLog(state, `Не хватает войск (${BALANCE.units[uKey].name}).`);
+    for (const [uKey, cnt] of Object.entries(usedUnits)) {
+      if ((state.troops[uKey] || 0) < cnt) {
+        pushLog(state, `Не хватает воинов: ${BALANCE.units[uKey].name}.`);
+        sound.alert();
+        onMutate();
+        return;
+      }
+    }
+    for (const [tKey, cnt] of Object.entries(usedTools)) {
+      if ((state.tools[tKey] || 0) < cnt) {
+        pushLog(state, `Не хватает орудий: ${BALANCE.tools[tKey].name}.`);
         sound.alert();
         onMutate();
         return;
       }
     }
 
-    for (const uKey of Object.keys(totalNeeded)) {
-      state.troops[uKey] -= totalNeeded[uKey];
-    }
+    for (const [uKey, cnt] of Object.entries(usedUnits)) state.troops[uKey] -= cnt;
+    for (const [tKey, cnt] of Object.entries(usedTools)) state.tools[tKey] -= cnt;
 
     const travelMs = getMarchDurationMs(state, target.distanceTiles);
     state.marches.push({
-      id: `march_${Date.now()}`,
+      id: `atk_${Date.now()}`,
       targetId: target.id,
+      realm: target.realm,
       kind: 'attack',
-      flanks,
+      waves: JSON.parse(JSON.stringify(draftWaves)),
       startedAt: Date.now(),
       arrivesAt: Date.now() + travelMs
     });
 
-    draftFlanks = emptyFlanks();
-    pushLog(state, `Отряд выступил на "${target.name}" (${Math.round(travelMs / 1000)}с).`);
+    draftWaves = Array.from({ length: maxWaves }, () => emptyWave());
+    simReport = null;
+    pushLog(state, `Армия выступила на штурм "${target.name}" (${Math.round(travelMs / 1000)}с).`);
     sound.march();
     onMutate();
   });
 }
-
