@@ -43,6 +43,26 @@ export function renderCommandView(container, state, onMutate) {
         })
         .join('')}
     </div>
+
+    <div class="card">
+      <h3>Снаряжение и самоцветы</h3>
+      ${BALANCE.equipmentPool
+        .map((eq) => {
+          const equipped = (state.equippedIds || []).includes(eq.id);
+          return `
+            <div class="map-node">
+              <div>
+                <strong>${eq.name}</strong>
+                <div class="muted">${eq.bonusText}</div>
+              </div>
+              <button class="mini-btn ${equipped ? 'gold' : ''}" data-equip="${eq.id}" type="button">
+                ${equipped ? 'Надето' : 'Надеть'}
+              </button>
+            </div>
+          `;
+        })
+        .join('')}
+    </div>
   `;
 
   container.querySelectorAll('[data-cmd]').forEach((btn) => {
@@ -60,6 +80,18 @@ export function renderCommandView(container, state, onMutate) {
       state.activeCastellanId = btn.dataset.cast;
       const c = BALANCE.castellans.find((x) => x.id === state.activeCastellanId);
       pushLog(state, `Назначен кастелян: ${c?.name}`);
+      sound.click();
+      onMutate();
+    });
+  });
+
+  container.querySelectorAll('[data-equip]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.equip;
+      const list = new Set(state.equippedIds || []);
+      if (list.has(id)) list.delete(id);
+      else list.add(id);
+      state.equippedIds = [...list];
       sound.click();
       onMutate();
     });

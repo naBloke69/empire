@@ -39,20 +39,19 @@ function drawBuildingSprite(ctx, slot, pos, isSelected, isBuilding) {
   const lvl = slot.level;
   const h = 14 + Math.min(24, lvl * 4);
 
-  drawIsoDiamond(ctx, x, y + 6, 34, 17, 'rgba(0,0,0,0.32)');
+  drawIsoDiamond(ctx, x, y + 6, 34, 17, 'rgba(0,0,0,0.34)');
 
   const palette = {
-    keep: { top: '#e5b55c', left: '#9e7430', right: '#78551f', roof: '#b33939' },
-    wall: { top: '#b2bec3', left: '#7f8fa6', right: '#636e72', roof: '#4b5563' },
-    barracks: { top: '#d980fa', left: '#833471', right: '#6f1e51', roof: '#a3293d' },
-    workshop: { top: '#f3a683', left: '#cf6a87', right: '#9b435c', roof: '#774936' },
-    farm: { top: '#badc58', left: '#6ab04c', right: '#4b8a34', roof: '#e1b12c' },
-    sawmill: { top: '#d19c66', left: '#8c5a2b', right: '#663f1c', roof: '#4e342e' },
-    quarry: { top: '#95afc0', left: '#535c68', right: '#3b424c', roof: '#576574' },
-    tavern: { top: '#7ed6df', left: '#22a6b3', right: '#167c87', roof: '#c23616' }
+    keep: { top: '#f0be5e', left: '#9e7430', right: '#78551f', roof: '#c43b3b' },
+    wall: { top: '#bcc8ce', left: '#7f8fa6', right: '#636e72', roof: '#4b5563' },
+    barracks: { top: '#df8cff', left: '#833471', right: '#6f1e51', roof: '#a3293d' },
+    workshop: { top: '#f7b290', left: '#cf6a87', right: '#9b435c', roof: '#774936' },
+    farm: { top: '#c4e663', left: '#6ab04c', right: '#4b8a34', roof: '#e1b12c' },
+    sawmill: { top: '#d9a46e', left: '#8c5a2b', right: '#663f1c', roof: '#4e342e' },
+    quarry: { top: '#9fb9ca', left: '#535c68', right: '#3b424c', roof: '#576574' },
+    tavern: { top: '#86e0e8', left: '#22a6b3', right: '#167c87', roof: '#c23616' }
   }[slot.type] || { top: '#ccc', left: '#888', right: '#666', roof: '#933' };
 
-  // Left wall
   ctx.beginPath();
   ctx.moveTo(x - 26, y);
   ctx.lineTo(x, y + 13);
@@ -62,7 +61,6 @@ function drawBuildingSprite(ctx, slot, pos, isSelected, isBuilding) {
   ctx.fillStyle = palette.left;
   ctx.fill();
 
-  // Right wall
   ctx.beginPath();
   ctx.moveTo(x + 26, y);
   ctx.lineTo(x, y + 13);
@@ -72,10 +70,8 @@ function drawBuildingSprite(ctx, slot, pos, isSelected, isBuilding) {
   ctx.fillStyle = palette.right;
   ctx.fill();
 
-  // Roof
   drawIsoDiamond(ctx, x, y - h, 26, 13, palette.top, '#1e272e');
 
-  // Keep spire
   if (slot.type === 'keep') {
     ctx.beginPath();
     ctx.moveTo(x, y - h - 18);
@@ -87,15 +83,14 @@ function drawBuildingSprite(ctx, slot, pos, isSelected, isBuilding) {
   }
 
   if (isSelected) {
-    drawIsoDiamond(ctx, x, y + 4, 38, 19, 'rgba(255, 215, 100, 0.14)', '#ffd166');
+    drawIsoDiamond(ctx, x, y + 4, 38, 19, 'rgba(255, 215, 100, 0.16)', '#ffd166');
   }
 
-  // Badge label
   const shortName = BALANCE.buildings[slot.type].name.split(' ')[0];
   ctx.font = 'bold 10px system-ui, sans-serif';
   const label = isBuilding ? `🔨 ${shortName}` : `${shortName} ур.${lvl}`;
   const tw = ctx.measureText(label).width + 10;
-  ctx.fillStyle = 'rgba(13, 18, 25, 0.85)';
+  ctx.fillStyle = 'rgba(13, 18, 25, 0.86)';
   ctx.fillRect(x - tw / 2, y + 14, tw, 15);
   ctx.fillStyle = isSelected ? '#ffd166' : '#f1f2f6';
   ctx.textAlign = 'center';
@@ -117,11 +112,9 @@ function drawCastleCanvas(canvas, state) {
   const cx = w / 2;
   const cy = h / 2 + 12;
 
-  // Moat & outer fortress courtyard
   drawIsoDiamond(ctx, cx, cy + 4, 196, 98, 'rgba(32, 118, 168, 0.45)', '#4ea8de');
   drawIsoDiamond(ctx, cx, cy + 2, 174, 87, 'rgba(255, 240, 200, 0.12)', '#95a5a6');
 
-  // Sort slots back-to-front by (gx + gy)
   const sorted = [...state.slots].sort((a, b) => a.gx + a.gy - (b.gx + b.gy));
   const hitBoxes = [];
 
@@ -131,6 +124,13 @@ function drawCastleCanvas(canvas, state) {
     const isBuilding = state.buildQueue?.slotId === slot.id;
     drawBuildingSprite(ctx, slot, pos, isSelected, isBuilding);
     hitBoxes.push({ id: slot.id, x: pos.x, y: pos.y });
+  }
+
+  if ((state.castleFireDamage || 0) > 0) {
+    ctx.font = '16px system-ui, sans-serif';
+    for (let i = 0; i < state.castleFireDamage; i++) {
+      ctx.fillText('🔥', cx - 60 + i * 30, cy - 35 + (i % 2) * 14);
+    }
   }
 
   canvas._hitBoxes = hitBoxes;
@@ -147,6 +147,8 @@ export function renderCastleView(container, state, onMutate) {
   const affordable = canAfford(state.resources, cost);
   const busyBuild = Boolean(state.buildQueue);
   const wavesCount = getMaxAttackWaves(state);
+  const fireCount = state.castleFireDamage || 0;
+  const repairCost = { wood: fireCount * 70, stone: fireCount * 70, gold: fireCount * 50 };
 
   const buildStatusText = state.buildQueue
     ? `Строится: ${BALANCE.buildings[state.buildQueue.type]?.name} → ур.${state.buildQueue.targetLevel} (${Math.max(0, Math.ceil((state.buildQueue.endsAt - now) / 1000))}с)`
@@ -165,9 +167,23 @@ export function renderCastleView(container, state, onMutate) {
       <canvas id="castle-canvas" width="480" height="270"></canvas>
       <div class="canvas-overlay-top">
         <span class="pill">🏰 ${BALANCE.realms[state.activeRealm]?.name}</span>
-        <span class="pill">🌊 Волн атаки: ${wavesCount} • 🛡️ Стены: +${Math.round(econ.wallDefenseBonus * 100)}%</span>
+        <span class="pill">🌊 Волн: ${wavesCount} • 🛡️ Стены: +${Math.round(econ.wallDefenseBonus * 100)}%</span>
       </div>
     </div>
+
+    ${
+      fireCount > 0
+        ? `
+      <div class="card alert-fire">
+        <h3>🔥 Очаги пожара в замке: ${fireCount}</h3>
+        <p class="muted">Снижают добычу и порядок. Ремонт: 🪵${repairCost.wood} 🪨${repairCost.stone} 🪙${repairCost.gold}</p>
+        <button id="btn-repair-fire" class="action-btn danger" ${canAfford(state.resources, repairCost) ? '' : 'disabled'} type="button">
+          Потушить и восстановить замок
+        </button>
+      </div>
+    `
+        : ''
+    }
 
     <div class="card">
       <h3>${cfg.name} (Ур. ${slot.level} → ${nextLevel})</h3>
@@ -224,6 +240,27 @@ export function renderCastleView(container, state, onMutate) {
           .join('')}
       </div>
     </div>
+
+    <div class="card">
+      <h3>Декор замка (Общественный порядок)</h3>
+      ${BALANCE.decorItems
+        .map((dec) => {
+          const owned = (state.ownedDecorIds || []).includes(dec.id);
+          const ok = !owned && canAfford(state.resources, dec.cost);
+          return `
+            <div class="map-node">
+              <div>
+                <strong>${dec.name}</strong>
+                <div class="muted">+${dec.orderBonus} порядок • Цена: 🪵${dec.cost.wood || 0} 🪨${dec.cost.stone || 0} 🪙${dec.cost.gold || 0} 💎${dec.cost.rubies || 0}</div>
+              </div>
+              <button class="mini-btn ${owned ? 'ok' : 'gold'}" data-decor="${dec.id}" ${owned || !ok ? 'disabled' : ''} type="button">
+                ${owned ? 'Установлен' : 'Купить'}
+              </button>
+            </div>
+          `;
+        })
+        .join('')}
+    </div>
   `;
 
   const canvas = container.querySelector('#castle-canvas');
@@ -237,7 +274,7 @@ export function renderCastleView(container, state, onMutate) {
       const clickY = (e.clientY - rect.top) * scaleY;
 
       let best = null;
-      let bestDist = 42;
+      let bestDist = 46;
       for (const box of canvas._hitBoxes || []) {
         const d = Math.hypot(clickX - box.x, clickY - box.y);
         if (d < bestDist) {
@@ -252,6 +289,15 @@ export function renderCastleView(container, state, onMutate) {
       }
     });
   }
+
+  container.querySelector('#btn-repair-fire')?.addEventListener('click', () => {
+    if (fireCount <= 0 || !canAfford(state.resources, repairCost)) return;
+    for (const [k, v] of Object.entries(repairCost)) state.resources[k] -= v;
+    state.castleFireDamage = 0;
+    pushLog(state, 'Пожары потушены, укрепления замка восстановлены.');
+    sound.success();
+    onMutate();
+  });
 
   container.querySelector('#btn-upgrade')?.addEventListener('click', () => {
     if (state.buildQueue || !canAfford(state.resources, cost)) return;
@@ -312,6 +358,18 @@ export function renderCastleView(container, state, onMutate) {
       };
       pushLog(state, `Мастерская: заказано ${count}x ${tCfg.name}`);
       sound.click();
+      onMutate();
+    });
+  });
+
+  container.querySelectorAll('[data-decor]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const dec = BALANCE.decorItems.find((x) => x.id === btn.dataset.decor);
+      if (!dec || (state.ownedDecorIds || []).includes(dec.id) || !canAfford(state.resources, dec.cost)) return;
+      for (const [k, v] of Object.entries(dec.cost)) state.resources[k] -= v;
+      state.ownedDecorIds = [...(state.ownedDecorIds || []), dec.id];
+      pushLog(state, `Установлен декор "${dec.name}" (+${dec.orderBonus} порядок)`);
+      sound.success();
       onMutate();
     });
   });

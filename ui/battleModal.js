@@ -1,6 +1,6 @@
 import { BALANCE } from '../config/balance.js';
 import { emptyWave, resolveSiegeBattle } from '../core/combat.js';
-import { getActiveCommander, getMaxAttackWaves } from '../core/economy.js';
+import { getActiveCommander, getGearBonuses, getMaxAttackWaves } from '../core/economy.js';
 import { getMarchDurationMs } from '../core/timeEngine.js';
 import { pushLog } from '../core/state.js';
 import { sound } from '../audio/sound.js';
@@ -21,6 +21,7 @@ export function renderBattleView(container, state, onMutate) {
 
   const target = BALANCE.mapTargets.find((t) => t.id === state.selectedTargetId) || BALANCE.mapTargets[0];
   const cmd = getActiveCommander(state);
+  const gear = getGearBonuses(state);
   const wave = draftWaves[activeWaveIndex];
 
   container.innerHTML = `
@@ -160,7 +161,7 @@ export function renderBattleView(container, state, onMutate) {
 
   container.querySelector('#btn-simulate')?.addEventListener('click', () => {
     syncCurrentWaveInputs();
-    simReport = resolveSiegeBattle(draftWaves, target, { mutate: false, commander: cmd });
+    simReport = resolveSiegeBattle(draftWaves, target, { mutate: false, commander: cmd, gear });
     sound.click();
     onMutate();
   });

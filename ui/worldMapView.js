@@ -16,7 +16,6 @@ function drawWorldCanvas(canvas, state, targets) {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
-  // Grid lines
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.lineWidth = 1;
   for (let gx = 40; gx < w; gx += 48) {
@@ -36,13 +35,11 @@ function drawWorldCanvas(canvas, state, targets) {
   const homeY = h * 0.52;
   const hitBoxes = [];
 
-  // Draw targets
   for (const t of targets) {
     const tx = w * t.x;
     const ty = h * t.y;
     const isSel = t.id === state.selectedTargetId;
 
-    // Road line
     ctx.strokeStyle = isSel ? 'rgba(255, 209, 102, 0.5)' : 'rgba(255,255,255,0.14)';
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
@@ -51,7 +48,6 @@ function drawWorldCanvas(canvas, state, targets) {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Marker circle
     ctx.beginPath();
     ctx.arc(tx, ty, isSel ? 17 : 14, 0, Math.PI * 2);
     ctx.fillStyle =
@@ -78,7 +74,6 @@ function drawWorldCanvas(canvas, state, targets) {
     hitBoxes.push({ id: t.id, x: tx, y: ty });
   }
 
-  // Player castle in center
   ctx.beginPath();
   ctx.arc(homeX, homeY, 18, 0, Math.PI * 2);
   ctx.fillStyle = '#3498db';
@@ -91,7 +86,6 @@ function drawWorldCanvas(canvas, state, targets) {
   ctx.textAlign = 'center';
   ctx.fillText('🏰', homeX, homeY + 5);
 
-  // Active marches animation
   for (const m of state.marches) {
     const t = BALANCE.mapTargets.find((x) => x.id === m.targetId);
     if (!t || t.realm !== state.activeRealm) continue;
@@ -193,7 +187,7 @@ export function renderWorldMapView(container, state, onMutate, onGoBattle) {
       const clickX = ((e.clientX - rect.left) * canvas.width) / rect.width;
       const clickY = ((e.clientY - rect.top) * canvas.height) / rect.height;
       for (const box of canvas._hitBoxes || []) {
-        if (Math.hypot(clickX - box.x, clickY - box.y) < 28) {
+        if (Math.hypot(clickX - box.x, clickY - box.y) < 30) {
           state.selectedTargetId = box.id;
           sound.click();
           onMutate();

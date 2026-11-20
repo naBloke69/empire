@@ -36,7 +36,7 @@ export function renderHud(el, state) {
 
 export function renderLogs(listEl, state) {
   listEl.innerHTML = state.logs
-    .slice(0, 12)
+    .slice(0, 14)
     .map((item) => `<li>${item.text}</li>`)
     .join('');
 }
