@@ -1,5 +1,5 @@
 import { BALANCE } from '../config/balance.js';
-import { getActiveCommander, stepEconomy } from './economy.js';
+import { getActiveCommander, getGearBonuses, stepEconomy } from './economy.js';
 import { resolveSiegeBattle } from './combat.js';
 import { pushLog } from './state.js';
 import { sound } from '../audio/sound.js';
@@ -47,6 +47,7 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
 
   const remainingMarches = [];
   const cmd = getActiveCommander(state);
+  const gear = getGearBonuses(state);
 
   for (const m of state.marches) {
     if (now < m.arrivesAt) {
@@ -65,10 +66,27 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
     } else if (m.kind === 'attack') {
       const report = resolveSiegeBattle(m.waves, target, {
         mutate: true,
-        commander: cmd
+        commander: cmd,
+        gear
       });
 
-      const loot = report.victory && target ? { ...target.loot } : { wood: 0, stone: 0, food: 0, gold: 0, rubies: 0 };
+      const lootMult = 1 + (gear.lootBonus || 0);
+      const loot =
+        report.victory && target
+          ? {
+              wood: Math.round(target.loot.wood * lootMult),
+              stone: Math.round(target.loot.stone * lootMult),
+              food: Math.round(target.loot.food * lootMult),
+              gold: Math.round(target.loot.gold * lootMult),
+              rubies: target.loot.rubies || 0
+            }
+          : { wood: 0, stone: 0, food: 0, gold: 0, rubies: 0 };
+
+      if (report.victory) {
+        state.victoriesCount = (state.victoriesCount || 0) + 1;
+      } else {
+        state.castleFireDamage = Math.min(5, (state.castleFireDamage || 0) + 1);
+      }
 
       if (report.victory && target?.kind === 'OUTPOST' && !state.capturedOutposts.includes(target.id)) {
         state.capturedOutposts.push(target.id);
@@ -87,7 +105,7 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false) {
         state,
         report.victory
           ? `Штурм "${target?.name}" успешен! Трофеи в пути домой.`
-          : `Штурм "${target?.name}" отбит: ${report.notes[0] || 'недостаточно сил'}.`
+          : `Штурм "${target?.name}" отбит: в замке начался пожар (+1 очаг).`
       );
 
       if (isLiveTick) {

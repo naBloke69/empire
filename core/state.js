@@ -1,16 +1,26 @@
 import { BALANCE } from '../config/balance.js';
 
-const STORAGE_KEY = 'e4k_mobile_clone_v2';
+const STORAGE_KEY = 'e4k_royal_mobile_v6';
 
 export function createInitialState() {
   const now = Date.now();
   return {
     lastTickAt: now,
+    accountName: 'Лорд Stezzy',
+    allianceName: 'Железный легион',
+    allianceTreasury: 350,
+    activeAlliancePerks: ['al_war'],
+    completedResearchIds: [],
+    claimedQuestIds: [],
+    victoriesCount: 0,
+    castleFireDamage: 0,
     activeRealm: 'great_empire',
     selectedSlotId: 'slot_keep',
     selectedTargetId: BALANCE.mapTargets[0].id,
     activeCommanderId: BALANCE.commanders[0].id,
     activeCastellanId: BALANCE.castellans[0].id,
+    equippedIds: ['eq_blade'],
+    ownedDecorIds: ['dec_garden'],
     quickMode: false,
     soundEnabled: true,
     taxCooldownUntil: 0,
@@ -33,7 +43,7 @@ export function createInitialState() {
     trainQueue: null,
     marches: [],
     logs: [
-      { id: now, text: 'Добро пожаловать в империю! Нажимай прямо на постройки в замке или переходи на карту мира.' }
+      { id: now, text: 'Королевство готово! Замок, карта, волны штурма, герои, исследования, задания и альянс активны.' }
     ],
     lastReport: null
   };
@@ -49,7 +59,7 @@ export function pushLog(state, text) {
     id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     text: `[${timeStr}] ${text}`
   });
-  if (state.logs.length > 40) state.logs.length = 40;
+  if (state.logs.length > 45) state.logs.length = 45;
 }
 
 export function saveState(state) {

@@ -8,6 +8,41 @@ export function getActiveCastellan(state) {
   return BALANCE.castellans.find((c) => c.id === state.activeCastellanId) || BALANCE.castellans[0];
 }
 
+export function getGearBonuses(state) {
+  let flankAtk = 0;
+  let centerAtk = 0;
+  let wallDef = 0;
+  let lootBonus = 0;
+  let researchProd = 0;
+
+  for (const eqId of state.equippedIds || []) {
+    const item = BALANCE.equipmentPool.find((x) => x.id === eqId);
+    if (!item) continue;
+    flankAtk += item.flankAtk || 0;
+    centerAtk += item.centerAtk || 0;
+    wallDef += item.wallDef || 0;
+    lootBonus += item.lootBonus || 0;
+  }
+
+  for (const pId of state.activeAlliancePerks || []) {
+    const perk = BALANCE.alliancePerks.find((x) => x.id === pId);
+    if (!perk) continue;
+    flankAtk += perk.atkBonus || 0;
+    centerAtk += perk.atkBonus || 0;
+  }
+
+  for (const rId of state.completedResearchIds || []) {
+    const res = BALANCE.researchTree.find((x) => x.id === rId);
+    if (!res) continue;
+    flankAtk += res.atkBonus || 0;
+    centerAtk += res.atkBonus || 0;
+    wallDef += res.wallBonus || 0;
+    researchProd += res.prodBonus || 0;
+  }
+
+  return { flankAtk, centerAtk, wallDef, lootBonus, researchProd };
+}
+
 export function getBuildingCost(type, nextLevel) {
   const cfg = BALANCE.buildings[type];
   const mult = Math.pow(cfg.costScale, Math.max(0, nextLevel - 1));
@@ -33,14 +68,16 @@ export function getMaxAttackWaves(state) {
 
 export function getEconomyStats(state) {
   const castellan = getActiveCastellan(state);
+  const gear = getGearBonuses(state);
+  const firePenalty = Math.max(0.45, 1 - (state.castleFireDamage || 0) * 0.08);
 
-  let publicOrder = 100 + (castellan.orderFlat || 0);
-  let foodPerMin = 15;
-  let woodPerMin = 14;
-  let stonePerMin = 12;
-  let goldPerMin = 14;
-  let foodCap = 900;
-  let storageCap = 1200;
+  let publicOrder = 100 + (castellan.orderFlat || 0) - (state.castleFireDamage || 0) * 8;
+  let foodPerMin = 16;
+  let woodPerMin = 15;
+  let stonePerMin = 13;
+  let goldPerMin = 15;
+  let foodCap = 950;
+  let storageCap = 1250;
   let trainSpeedBonus = 0;
   let wallDefenseBonus = 0;
 
@@ -57,9 +94,25 @@ export function getEconomyStats(state) {
     if (cfg.defenseBonusPerLvl) wallDefenseBonus += cfg.defenseBonusPerLvl * slot.level;
   }
 
+  for (const decId of state.ownedDecorIds || []) {
+    const dec = BALANCE.decorItems.find((d) => d.id === decId);
+    if (dec) publicOrder += dec.orderBonus || 0;
+  }
+
+  let allianceProdBonus = 0;
+  for (const pId of state.activeAlliancePerks || []) {
+    const perk = BALANCE.alliancePerks.find((x) => x.id === pId);
+    if (perk) allianceProdBonus += perk.prodBonus || 0;
+  }
+
   const outpostBonus = 1 + (state.capturedOutposts?.length || 0) * 0.12;
   const orderMult = 1 + Math.max(0, publicOrder - 100) / 300;
-  const prodMult = orderMult * (castellan.prodMult || 1) * outpostBonus;
+  const prodMult =
+    orderMult *
+    (castellan.prodMult || 1) *
+    outpostBonus *
+    (1 + allianceProdBonus + (gear.researchProd || 0)) *
+    firePenalty;
 
   woodPerMin *= prodMult;
   stonePerMin *= prodMult;
@@ -102,7 +155,7 @@ export function getEconomyStats(state) {
       gold: storageCap * 2
     },
     trainSpeedBonus: trainSpeedBonus + (orderMult - 1) * 0.5,
-    wallDefenseBonus: wallDefenseBonus * (castellan.wallDefMult || 1)
+    wallDefenseBonus: wallDefenseBonus * (castellan.wallDefMult || 1) + gear.wallDef
   };
 }
 
