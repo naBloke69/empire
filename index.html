@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Four Realms — Strategy</title>
+  <title>Empire: Four Kingdoms — Web Clone</title>
   <link rel="stylesheet" href="./styles/main.css" />
 </head>
 <body>
@@ -11,23 +11,15 @@
     <header id="hud" class="hud"></header>
 
     <div class="sub-toolbar">
-      <div class="row">
-        <select id="realm-filter" aria-label="Фильтр королевства">
-          <option value="ALL">Все королевства</option>
-          <option value="Зелёные просторы">Зелёные просторы</option>
-          <option value="Пылающие пески">Пылающие пески</option>
-          <option value="Вечный холод">Вечный холод</option>
+      <div class="realm-bar">
+        <select id="realm-select" aria-label="Королевство">
+          <option value="great_empire">Великая империя</option>
+          <option value="burning_sands">Пылающие пески</option>
+          <option value="everwinter">Вечный холод</option>
+          <option value="fire_peaks">Огненные вершины</option>
         </select>
-        <select id="map-layer-filter" aria-label="Фильтр целей на карте">
-          <option value="ALL">Все цели</option>
-          <option value="CAMP">Лагеря и форты</option>
-          <option value="VILLAGE">Деревни ресурсов</option>
-          <option value="EVENT">События</option>
-        </select>
-      </div>
-      <div class="row">
-        <button id="btn-clean-view" class="mini-btn" type="button">Чистый вид</button>
-        <button id="btn-quick-scout" class="mini-btn" type="button">Разведка целей</button>
+        <button id="btn-tax" class="mini-btn gold" type="button">Налоги</button>
+        <button id="btn-ruby-boost" class="mini-btn ruby" type="button">Ускорить (15💎)</button>
       </div>
     </div>
 
@@ -35,18 +27,18 @@
 
     <section id="event-log-panel" class="log-panel">
       <div class="log-header">
-        <span>Журнал событий</span>
+        <span>Хроники империи</span>
         <button id="btn-toggle-log" class="mini-btn" type="button">Свернуть</button>
       </div>
       <ul id="event-log" class="event-log"></ul>
     </section>
 
     <nav class="bottom-nav">
-      <button class="nav-btn active" data-tab="castle" type="button">Замок</button>
-      <button class="nav-btn" data-tab="map" type="button">Карта</button>
-      <button class="nav-btn" data-tab="battle" type="button">Бой</button>
-      <button class="nav-btn" data-tab="command" type="button">Герои</button>
-      <button class="nav-btn" data-tab="system" type="button">Сейв</button>
+      <button class="nav-btn active" data-tab="castle" type="button">🏰 Замок</button>
+      <button class="nav-btn" data-tab="map" type="button">🗺️ Карта</button>
+      <button class="nav-btn" data-tab="battle" type="button">⚔️ Штурм</button>
+      <button class="nav-btn" data-tab="command" type="button">👑 Герои</button>
+      <button class="nav-btn" data-tab="system" type="button">⚙️ Меню</button>
     </nav>
   </div>
 

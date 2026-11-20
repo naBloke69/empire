@@ -14,43 +14,40 @@ advanceSimulation(state, Date.now(), false);
 saveState(state);
 
 let activeTab = 'castle';
-const filters = { realm: 'ALL', kind: 'ALL' };
 
-const appEl = document.getElementById('app');
 const hudEl = document.getElementById('hud');
 const viewEl = document.getElementById('view-container');
 const logListEl = document.getElementById('event-log');
 const toggleLogBtn = document.getElementById('btn-toggle-log');
-const realmFilterEl = document.getElementById('realm-filter');
-const kindFilterEl = document.getElementById('map-layer-filter');
-const cleanViewBtn = document.getElementById('btn-clean-view');
-const quickScoutBtn = document.getElementById('btn-quick-scout');
+const realmSelectEl = document.getElementById('realm-select');
+const taxBtn = document.getElementById('btn-tax');
+const rubyBoostBtn = document.getElementById('btn-ruby-boost');
 
 function renderSystemView(container) {
   const serialized = JSON.stringify(state);
   container.innerHTML = `
     <div class="card">
-      <h3>Темп, звук и сохранение</h3>
-      <div class="row" style="margin-bottom: 10px;">
+      <h3>Настройки и сохранение</h3>
+      <div class="row" style="margin-bottom:8px;">
         <button id="btn-quick-mode" class="action-btn secondary" type="button">
-          Быстрый режим (x${BALANCE.quickModeMultiplier}): ${state.quickMode ? 'Вкл' : 'Выкл'}
+          Быстрый темп (x2): ${state.quickMode ? 'Вкл' : 'Выкл'}
         </button>
         <button id="btn-sound" class="action-btn secondary" type="button">
-          Звук (Web Audio): ${sound.enabled ? 'Вкл' : 'Выкл'}
+          Звук: ${sound.enabled ? 'Вкл' : 'Выкл'}
         </button>
-        <button id="btn-reset" class="action-btn danger" type="button">Сброс</button>
+        <button id="btn-reset" class="action-btn danger" type="button">Новая игра</button>
       </div>
-      <label class="muted">Экспорт / импорт сейва (JSON)</label>
+      <label class="muted">Код сохранения (JSON)</label>
       <textarea id="save-json" rows="4">${serialized}</textarea>
-      <div class="row" style="margin-top: 8px;">
-        <button id="btn-import" class="action-btn secondary" type="button">Импортировать JSON</button>
+      <div class="row" style="margin-top:8px;">
+        <button id="btn-import" class="action-btn secondary" type="button">Загрузить JSON</button>
       </div>
     </div>
   `;
 
   container.querySelector('#btn-quick-mode')?.addEventListener('click', () => {
     state.quickMode = !state.quickMode;
-    pushLog(state, `Быстрый режим: ${state.quickMode ? 'включён' : 'выключен'}`);
+    pushLog(state, `Быстрый темп: ${state.quickMode ? 'включён' : 'выключен'}`);
     sound.click();
     syncAndRender(false);
   });
@@ -69,12 +66,11 @@ function renderSystemView(container) {
   });
 
   container.querySelector('#btn-import')?.addEventListener('click', () => {
-    const raw = container.querySelector('#save-json')?.value || '';
     try {
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(container.querySelector('#save-json')?.value || '');
       state = { ...state, ...parsed };
       advanceSimulation(state, Date.now(), false);
-      pushLog(state, 'Сейв импортирован.');
+      pushLog(state, 'Сохранение загружено.');
       sound.success();
       syncAndRender(false);
     } catch {
@@ -86,12 +82,14 @@ function renderSystemView(container) {
 }
 
 function render() {
-  appEl?.classList.toggle('clean-mode', Boolean(state.cleanView));
-  if (cleanViewBtn) {
-    cleanViewBtn.textContent = state.cleanView ? 'Обычный вид' : 'Чистый вид';
+  const now = Date.now();
+  if (realmSelectEl) realmSelectEl.value = state.activeRealm;
+
+  if (taxBtn) {
+    const leftSec = Math.max(0, Math.ceil((state.taxCooldownUntil - now) / 1000));
+    taxBtn.disabled = leftSec > 0;
+    taxBtn.textContent = leftSec > 0 ? `Налоги (${leftSec}с)` : 'Сбор налогов';
   }
-  if (realmFilterEl) realmFilterEl.value = filters.realm;
-  if (kindFilterEl) kindFilterEl.value = filters.kind;
 
   renderHud(hudEl, state);
   renderLogs(logListEl, state);
@@ -106,7 +104,6 @@ function render() {
     renderWorldMapView(
       viewEl,
       state,
-      filters,
       () => syncAndRender(false),
       () => {
         activeTab = 'battle';
@@ -136,31 +133,44 @@ document.querySelectorAll('.nav-btn').forEach((btn) => {
   });
 });
 
-realmFilterEl?.addEventListener('change', (e) => {
-  filters.realm = e.target.value;
+realmSelectEl?.addEventListener('change', (e) => {
+  state.activeRealm = e.target.value;
   sound.click();
-  render();
+  syncAndRender(false);
 });
 
-kindFilterEl?.addEventListener('change', (e) => {
-  filters.kind = e.target.value;
-  sound.click();
-  render();
-});
-
-cleanViewBtn?.addEventListener('click', () => {
-  state.cleanView = !state.cleanView;
-  sound.click();
-  saveState(state);
-  render();
-});
-
-quickScoutBtn?.addEventListener('click', () => {
-  state.scoutedIds = BALANCE.mapTargets.map((t) => t.id);
-  pushLog(state, 'Разведка обновила данные по целям на карте.');
+taxBtn?.addEventListener('click', () => {
+  const now = Date.now();
+  if (now < state.taxCooldownUntil) return;
+  const keepLvl = state.slots.find((s) => s.type === 'keep')?.level || 1;
+  const gain = 110 + keepLvl * 45;
+  state.resources.gold += gain;
+  state.taxCooldownUntil = now + 45000;
+  pushLog(state, `Сборщик налогов принёс +${gain} монет.`);
   sound.success();
-  saveState(state);
-  render();
+  syncAndRender(false);
+});
+
+rubyBoostBtn?.addEventListener('click', () => {
+  if ((state.resources.rubies || 0) < 15) {
+    pushLog(state, 'Не хватает рубинов для ускорения (нужно 15).');
+    sound.alert();
+    render();
+    return;
+  }
+  if (!state.buildQueue && !state.trainQueue && state.marches.length === 0) {
+    pushLog(state, 'Сейчас нет активных таймеров для ускорения.');
+    sound.alert();
+    render();
+    return;
+  }
+  state.resources.rubies -= 15;
+  if (state.buildQueue) state.buildQueue.endsAt = Date.now();
+  if (state.trainQueue) state.trainQueue.totalEndsAt = Date.now();
+  for (const m of state.marches) m.arrivesAt = Date.now();
+  pushLog(state, 'Потрачено 15 рубинов: текущие таймеры мгновенно завершены!');
+  sound.success();
+  syncAndRender(false);
 });
 
 toggleLogBtn?.addEventListener('click', () => {
@@ -173,9 +183,7 @@ setInterval(() => {
 }, BALANCE.tickIntervalMs);
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
-    syncAndRender(false);
-  }
+  if (!document.hidden) syncAndRender(false);
 });
 
 render();
