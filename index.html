@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Four Realms — Strategy</title>
+  <link rel="stylesheet" href="./styles/main.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <header id="hud" class="hud"></header>
+
+    <div class="sub-toolbar">
+      <div class="row">
+        <select id="realm-filter" aria-label="Фильтр королевства">
+          <option value="ALL">Все королевства</option>
+          <option value="Зелёные просторы">Зелёные просторы</option>
+          <option value="Пылающие пески">Пылающие пески</option>
+          <option value="Вечный холод">Вечный холод</option>
+        </select>
+        <select id="map-layer-filter" aria-label="Фильтр целей на карте">
+          <option value="ALL">Все цели</option>
+          <option value="CAMP">Лагеря и форты</option>
+          <option value="VILLAGE">Деревни ресурсов</option>
+          <option value="EVENT">События</option>
+        </select>
+      </div>
+      <div class="row">
+        <button id="btn-clean-view" class="mini-btn" type="button">Чистый вид</button>
+        <button id="btn-quick-scout" class="mini-btn" type="button">Разведка целей</button>
+      </div>
+    </div>
+
+    <main id="view-container" class="view-container"></main>
+
+    <section id="event-log-panel" class="log-panel">
+      <div class="log-header">
+        <span>Журнал событий</span>
+        <button id="btn-toggle-log" class="mini-btn" type="button">Свернуть</button>
+      </div>
+      <ul id="event-log" class="event-log"></ul>
+    </section>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="castle" type="button">Замок</button>
+      <button class="nav-btn" data-tab="map" type="button">Карта</button>
+      <button class="nav-btn" data-tab="battle" type="button">Бой</button>
+      <button class="nav-btn" data-tab="command" type="button">Герои</button>
+      <button class="nav-btn" data-tab="system" type="button">Сейв</button>
+    </nav>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
