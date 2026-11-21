@@ -12,7 +12,7 @@ import { sound } from '../audio/sound.js';
 let batchCount = 5;
 
 function isoToScreen(gx, gy, cx, cy) {
-  const tileW = 64;
+  const tileW = 66;
   const tileH = 31;
   return {
     x: cx + (gx - gy) * tileW,
@@ -20,7 +20,7 @@ function isoToScreen(gx, gy, cx, cy) {
   };
 }
 
-function drawIsoDiamond(ctx, x, y, w, h, fill, stroke = null) {
+function drawIsoDiamond(ctx, x, y, w, h, fill, stroke = null, lw = 1.5) {
   ctx.beginPath();
   ctx.moveTo(x, y - h);
   ctx.lineTo(x + w, y);
@@ -31,68 +31,116 @@ function drawIsoDiamond(ctx, x, y, w, h, fill, stroke = null) {
   ctx.fill();
   if (stroke) {
     ctx.strokeStyle = stroke;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = lw;
     ctx.stroke();
   }
 }
 
-function drawBuildingSprite(ctx, slot, pos, isSelected, isBuilding) {
+function drawCastleFortressSprite(ctx, slot, pos, isSelected, isBuilding) {
   const { x, y } = pos;
   const lvl = slot.level;
-  const h = 13 + Math.min(22, lvl * 3.5);
+  const wallH = 15 + Math.min(18, lvl * 3);
+  const towerH = wallH + 14;
 
-  drawIsoDiamond(ctx, x, y + 5, 30, 15, 'rgba(0,0,0,0.36)');
+  drawIsoDiamond(ctx, x, y + 6, 36, 17, 'rgba(0,0,0,0.42)');
 
-  const palette = {
-    keep: { top: '#f5be48', left: '#9e7430', right: '#78551f', roof: '#c43b3b' },
-    wall: { top: '#c6d2d8', left: '#7f8fa6', right: '#636e72', roof: '#4b5563' },
-    barracks: { top: '#e29aff', left: '#833471', right: '#6f1e51', roof: '#a3293d' },
-    workshop: { top: '#f7b290', left: '#cf6a87', right: '#9b435c', roof: '#774936' },
-    farm: { top: '#c8ec68', left: '#6ab04c', right: '#4b8a34', roof: '#e1b12c' },
-    sawmill: { top: '#dfa972', left: '#8c5a2b', right: '#663f1c', roof: '#4e342e' },
-    quarry: { top: '#a7c2d4', left: '#535c68', right: '#3b424c', roof: '#576574' },
-    tavern: { top: '#8be6ee', left: '#22a6b3', right: '#167c87', roof: '#c23616' }
-  }[slot.type] || { top: '#ccc', left: '#888', right: '#666', roof: '#933' };
+  const themes = {
+    keep: { stoneL: '#b89f6d', stoneR: '#8b7447', roof: '#c92a2a', trim: '#ffd43b' },
+    wall: { stoneL: '#9aa7b8', stoneR: '#6c7888', roof: '#495057', trim: '#dee2e6' },
+    barracks: { stoneL: '#9c7864', stoneR: '#6e5141', roof: '#a61e4d', trim: '#fcc419' },
+    workshop: { stoneL: '#8d7b68', stoneR: '#5e5042', roof: '#8c2d19', trim: '#ffa94d' },
+    farm: { stoneL: '#8fa35e', stoneR: '#64753e', roof: '#e67700', trim: '#ffe066' },
+    sawmill: { stoneL: '#9c6f44', stoneR: '#6b4a2b', roof: '#2b8a3e', trim: '#ffd43b' },
+    quarry: { stoneL: '#8695a6', stoneR: '#596573', roof: '#364fc7', trim: '#ced4da' },
+    tavern: { stoneL: '#9e7652', stoneR: '#6e4f33', roof: '#c2255c', trim: '#ffd43b' }
+  };
+  const th = themes[slot.type] || themes.keep;
+
+  // Крепостной корпус (левая и правая стены)
+  ctx.beginPath();
+  ctx.moveTo(x - 24, y);
+  ctx.lineTo(x, y + 12);
+  ctx.lineTo(x, y + 12 - wallH);
+  ctx.lineTo(x - 24, y - wallH);
+  ctx.closePath();
+  ctx.fillStyle = th.stoneL;
+  ctx.fill();
+  ctx.strokeStyle = '#1d2430';
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(x - 23, y);
-  ctx.lineTo(x, y + 11.5);
-  ctx.lineTo(x, y + 11.5 - h);
-  ctx.lineTo(x - 23, y - h);
+  ctx.moveTo(x + 24, y);
+  ctx.lineTo(x, y + 12);
+  ctx.lineTo(x, y + 12 - wallH);
+  ctx.lineTo(x + 24, y - wallH);
   ctx.closePath();
-  ctx.fillStyle = palette.left;
+  ctx.fillStyle = th.stoneR;
   ctx.fill();
+  ctx.stroke();
 
-  ctx.beginPath();
-  ctx.moveTo(x + 23, y);
-  ctx.lineTo(x, y + 11.5);
-  ctx.lineTo(x, y + 11.5 - h);
-  ctx.lineTo(x + 23, y - h);
-  ctx.closePath();
-  ctx.fillStyle = palette.right;
-  ctx.fill();
-
-  drawIsoDiamond(ctx, x, y - h, 23, 11.5, palette.top, '#1b222c');
-
-  if (slot.type === 'keep') {
-    ctx.beginPath();
-    ctx.moveTo(x, y - h - 16);
-    ctx.lineTo(x + 11, y - h - 2);
-    ctx.lineTo(x - 11, y - h - 2);
-    ctx.closePath();
-    ctx.fillStyle = palette.roof;
-    ctx.fill();
+  // Зубцы стен по краям
+  ctx.fillStyle = th.trim;
+  for (let i = -2; i <= 2; i += 2) {
+    ctx.fillRect(x + i * 7 - 2, y + 8 - wallH - 3, 4, 3);
   }
 
+  // Центральная башня цитадели или строения
+  const bW = slot.type === 'keep' ? 14 : 11;
+  ctx.beginPath();
+  ctx.moveTo(x - bW, y - 4);
+  ctx.lineTo(x, y + 2);
+  ctx.lineTo(x, y + 2 - towerH);
+  ctx.lineTo(x - bW, y - towerH);
+  ctx.closePath();
+  ctx.fillStyle = th.stoneL;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(x + bW, y - 4);
+  ctx.lineTo(x, y + 2);
+  ctx.lineTo(x, y + 2 - towerH);
+  ctx.lineTo(x + bW, y - towerH);
+  ctx.closePath();
+  ctx.fillStyle = th.stoneR;
+  ctx.fill();
+
+  // Шатровая крыша башни
+  ctx.beginPath();
+  ctx.moveTo(x, y - towerH - 15);
+  ctx.lineTo(x + bW + 4, y - towerH + 1);
+  ctx.lineTo(x - bW - 4, y - towerH + 1);
+  ctx.closePath();
+  ctx.fillStyle = th.roof;
+  ctx.fill();
+  ctx.strokeStyle = '#1b2028';
+  ctx.stroke();
+
+  // Флаг на вершине башни
+  ctx.strokeStyle = '#ffe69e';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y - towerH - 15);
+  ctx.lineTo(x, y - towerH - 24);
+  ctx.stroke();
+
+  ctx.fillStyle = slot.type === 'keep' ? '#ffd43b' : th.roof;
+  ctx.beginPath();
+  ctx.moveTo(x, y - towerH - 24);
+  ctx.lineTo(x + 11, y - towerH - 20);
+  ctx.lineTo(x, y - towerH - 16);
+  ctx.closePath();
+  ctx.fill();
+
   if (isSelected) {
-    drawIsoDiamond(ctx, x, y + 3, 35, 17.5, 'rgba(255, 227, 153, 0.16)', '#ffe399');
+    drawIsoDiamond(ctx, x, y + 3, 38, 18.5, 'rgba(255, 230, 158, 0.16)', '#ffe69e', 2);
   }
 
   const shortMap = {
     keep: 'Цитадель',
     wall: 'Стены',
     barracks: 'Казармы',
-    workshop: 'Осадная',
+    workshop: 'Осадный двор',
     farm: 'Ферма',
     sawmill: 'Лесопилка',
     quarry: 'Каменоломня',
@@ -100,15 +148,15 @@ function drawBuildingSprite(ctx, slot, pos, isSelected, isBuilding) {
   };
   const shortName = shortMap[slot.type] || BALANCE.buildings[slot.type].name.split(' ')[0];
   ctx.font = 'bold 9.5px system-ui, sans-serif';
-  const label = isBuilding ? `🔨 ${shortName}` : `${shortName} ур.${lvl}`;
+  const label = isBuilding ? `🔨 ${shortName} → ур.${lvl + 1}` : `${shortName} ур.${lvl}`;
   const tw = ctx.measureText(label).width + 8;
-  const badgeY = y + 13;
-  ctx.fillStyle = 'rgba(11, 15, 22, 0.88)';
+  const badgeY = y + 14;
+  ctx.fillStyle = 'rgba(10, 14, 21, 0.9)';
   ctx.fillRect(x - tw / 2, badgeY, tw, 14);
-  ctx.strokeStyle = isSelected ? '#ffe399' : 'rgba(245, 190, 72, 0.35)';
+  ctx.strokeStyle = isSelected ? '#ffe69e' : 'rgba(245, 190, 72, 0.42)';
   ctx.lineWidth = 1;
   ctx.strokeRect(x - tw / 2, badgeY, tw, 14);
-  ctx.fillStyle = isSelected ? '#ffe399' : '#f4f6fa';
+  ctx.fillStyle = isSelected ? '#ffe69e' : '#f8f5ec';
   ctx.textAlign = 'center';
   ctx.fillText(label, x, badgeY + 10.5);
 }
@@ -128,8 +176,9 @@ function drawCastleCanvas(canvas, state) {
   const cx = w / 2;
   const cy = h / 2 + 8;
 
-  drawIsoDiamond(ctx, cx, cy + 4, 212, 102, 'rgba(28, 110, 158, 0.44)', '#5bc0eb');
-  drawIsoDiamond(ctx, cx, cy + 2, 190, 91, 'rgba(255, 240, 200, 0.12)', '#f5be48');
+  // Внешний ров с водой и крепостной контур
+  drawIsoDiamond(ctx, cx, cy + 4, 216, 104, 'rgba(24, 105, 152, 0.48)', '#68c8f5', 1.5);
+  drawIsoDiamond(ctx, cx, cy + 2, 194, 93, 'rgba(255, 236, 185, 0.14)', '#f5be48', 1.5);
 
   const sorted = [...state.slots].sort((a, b) => a.gx + a.gy - (b.gx + b.gy));
   const hitBoxes = [];
@@ -138,7 +187,7 @@ function drawCastleCanvas(canvas, state) {
     const pos = isoToScreen(slot.gx, slot.gy, cx, cy);
     const isSelected = slot.id === state.selectedSlotId;
     const isBuilding = state.buildQueue?.slotId === slot.id;
-    drawBuildingSprite(ctx, slot, pos, isSelected, isBuilding);
+    drawCastleFortressSprite(ctx, slot, pos, isSelected, isBuilding);
     hitBoxes.push({ id: slot.id, x: pos.x, y: pos.y });
   }
 
@@ -177,11 +226,11 @@ export function renderCastleView(container, state, onMutate) {
           ? BALANCE.units[state.trainQueue.itemKey]?.name
           : BALANCE.tools[state.trainQueue.itemKey]?.name
       } (${Math.max(0, Math.ceil((state.trainQueue.totalEndsAt - now) / 1000))}с)`
-    : 'Казармы и мастерская свободны';
+    : 'Казармы и осадный двор свободны';
 
   container.innerHTML = `
     <div class="canvas-wrap">
-      <canvas id="castle-canvas" width="500" height="286"></canvas>
+      <canvas id="castle-canvas" width="500" height="288"></canvas>
       <div class="canvas-overlay-top">
         <span class="pill">🏰 ${BALANCE.realms[state.activeRealm]?.name}</span>
         <span class="pill">🌊 Волн: ${wavesCount} • 🛡️ Стены: +${Math.round(econ.wallDefenseBonus * 100)}%</span>
@@ -216,7 +265,7 @@ export function renderCastleView(container, state, onMutate) {
             : ''
         }
         <button id="btn-buy-shield" class="mini-btn ${shieldActive ? 'ok' : 'gold'}" type="button">
-          ${shieldActive ? '🛡️ Щит активен' : '🛡️ Щит замка (20💎)'}
+          ${shieldActive ? '🛡️ Щит активен' : '🛡️ Щит (20💎)'}
         </button>
       </div>
     </div>
@@ -253,7 +302,7 @@ export function renderCastleView(container, state, onMutate) {
     </div>
 
     <div class="card">
-      <h3>Осадная мастерская — Орудия штурма</h3>
+      <h3>Осадный двор — Орудия штурма</h3>
       <p class="muted">В наличии: Лестницы ${state.tools.ladder || 0} • Тараны ${state.tools.ram || 0} • Щиты ${state.tools.mantlet || 0}</p>
       <div class="grid-3">
         ${Object.entries(BALANCE.tools)
@@ -307,7 +356,7 @@ export function renderCastleView(container, state, onMutate) {
       const clickY = (e.clientY - rect.top) * scaleY;
 
       let best = null;
-      let bestDist = 52;
+      let bestDist = 54;
       for (const box of canvas._hitBoxes || []) {
         const d = Math.hypot(clickX - box.x, clickY - box.y);
         if (d < bestDist) {
@@ -418,7 +467,7 @@ export function renderCastleView(container, state, onMutate) {
         count: batchCount,
         totalEndsAt: Date.now() + totalSec * 1000
       };
-      pushLog(state, `Мастерская: заказано ${batchCount}x ${tCfg.name}`);
+      pushLog(state, `Осадный двор: заказано ${batchCount}x ${tCfg.name}`);
       sound.click();
       onMutate();
     });

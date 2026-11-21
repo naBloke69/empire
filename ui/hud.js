@@ -68,7 +68,7 @@ export function renderTimerStrip(stripEl, state) {
 
   stripEl.innerHTML = chips.length
     ? chips.join('')
-    : `<span class="muted" style="margin:0;">Таймеры свободны • ${BALANCE.realms[state.activeRealm]?.perkDesc || ''}</span>`;
+    : `<span class="muted" style="margin:0;">${state.accountName || 'Лорд'} • БП: ${state.bpXp || 0} XP • ${BALANCE.realms[state.activeRealm]?.perkDesc || ''}</span>`;
 }
 
 export function renderLogs(listEl, state) {

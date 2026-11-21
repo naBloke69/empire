@@ -3,6 +3,8 @@ import { getMarchDurationMs } from '../core/timeEngine.js';
 import { pushLog } from '../core/state.js';
 import { sound } from '../audio/sound.js';
 
+let mapFilter = 'ALL';
+
 function drawWorldCanvas(canvas, state, targets) {
   const ctx = canvas.getContext('2d');
   const w = canvas.width;
@@ -40,7 +42,7 @@ function drawWorldCanvas(canvas, state, targets) {
     const ty = h * t.y;
     const isSel = t.id === state.selectedTargetId;
 
-    ctx.strokeStyle = isSel ? 'rgba(255, 227, 153, 0.55)' : 'rgba(255,255,255,0.16)';
+    ctx.strokeStyle = isSel ? 'rgba(255, 230, 158, 0.65)' : 'rgba(255,255,255,0.16)';
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
     ctx.moveTo(homeX, homeY);
@@ -51,24 +53,37 @@ function drawWorldCanvas(canvas, state, targets) {
     ctx.beginPath();
     ctx.arc(tx, ty, isSel ? 17 : 14, 0, Math.PI * 2);
     ctx.fillStyle =
-      t.kind === 'OUTPOST' ? '#2ecc71' : t.kind === 'EVENT' ? '#f39c12' : '#e74c3c';
+      t.kind === 'OUTPOST'
+        ? '#2ecc71'
+        : t.kind === 'PLAYER_CASTLE'
+        ? '#f39c12'
+        : t.kind === 'EVENT'
+        ? '#9b59b6'
+        : '#e74c3c';
     ctx.fill();
     ctx.lineWidth = isSel ? 3 : 1.5;
-    ctx.strokeStyle = isSel ? '#ffe399' : '#111';
+    ctx.strokeStyle = isSel ? '#ffe69e' : '#111';
     ctx.stroke();
 
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 12px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    const icon = t.kind === 'OUTPOST' ? '🚩' : t.kind === 'VILLAGE' ? '🌾' : t.kind === 'EVENT' ? '⛺' : '🗼';
+    const icon =
+      t.kind === 'OUTPOST'
+        ? '🚩'
+        : t.kind === 'PLAYER_CASTLE'
+        ? '🏰'
+        : t.kind === 'EVENT'
+        ? '⛺'
+        : '🗼';
     ctx.fillText(icon, tx, ty + 4);
 
     ctx.font = 'bold 10px system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(11, 15, 22, 0.86)';
-    const label = t.name.slice(0, 18);
+    ctx.fillStyle = 'rgba(11, 16, 24, 0.88)';
+    const label = t.name.slice(0, 20);
     const tw = ctx.measureText(label).width + 8;
     ctx.fillRect(tx - tw / 2, ty + 16, tw, 14);
-    ctx.fillStyle = isSel ? '#ffe399' : '#f1f2f6';
+    ctx.fillStyle = isSel ? '#ffe69e' : '#f1f2f6';
     ctx.fillText(label, tx, ty + 26);
 
     hitBoxes.push({ id: t.id, x: tx, y: ty });
@@ -76,15 +91,15 @@ function drawWorldCanvas(canvas, state, targets) {
 
   ctx.beginPath();
   ctx.arc(homeX, homeY, 18, 0, Math.PI * 2);
-  ctx.fillStyle = '#3498db';
+  ctx.fillStyle = '#2980b9';
   ctx.fill();
   ctx.lineWidth = 2.5;
-  ctx.strokeStyle = '#ffe399';
+  ctx.strokeStyle = '#ffe69e';
   ctx.stroke();
   ctx.fillStyle = '#fff';
   ctx.font = '14px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('🏰', homeX, homeY + 5);
+  ctx.fillText('👑', homeX, homeY + 5);
 
   for (const m of state.marches) {
     const t = BALANCE.mapTargets.find((x) => x.id === m.targetId);
@@ -115,9 +130,13 @@ function drawWorldCanvas(canvas, state, targets) {
 
 export function renderWorldMapView(container, state, onMutate, onGoBattle) {
   const now = Date.now();
-  const realmTargets = BALANCE.mapTargets.filter((t) => t.realm === state.activeRealm);
+  const allRealmTargets = BALANCE.mapTargets.filter((t) => t.realm === state.activeRealm);
+  const filteredTargets =
+    mapFilter === 'ALL' ? allRealmTargets : allRealmTargets.filter((t) => t.kind === mapFilter);
+  const visibleTargets = filteredTargets.length ? filteredTargets : allRealmTargets;
+
   const selectedTarget =
-    realmTargets.find((t) => t.id === state.selectedTargetId) || realmTargets[0] || BALANCE.mapTargets[0];
+    visibleTargets.find((t) => t.id === state.selectedTargetId) || visibleTargets[0] || BALANCE.mapTargets[0];
   if (selectedTarget && state.selectedTargetId !== selectedTarget.id) {
     state.selectedTargetId = selectedTarget.id;
   }
@@ -126,6 +145,13 @@ export function renderWorldMapView(container, state, onMutate, onGoBattle) {
   const marchSec = selectedTarget ? Math.round(getMarchDurationMs(state, selectedTarget.distanceTiles) / 1000) : 5;
 
   container.innerHTML = `
+    <div class="subtabs">
+      <button class="mini-btn ${mapFilter === 'ALL' ? 'gold' : ''}" data-mfilter="ALL" type="button">🌍 Весь мир</button>
+      <button class="mini-btn ${mapFilter === 'PLAYER_CASTLE' ? 'gold' : ''}" data-mfilter="PLAYER_CASTLE" type="button">🏰 Замки</button>
+      <button class="mini-btn ${mapFilter === 'OUTPOST' ? 'gold' : ''}" data-mfilter="OUTPOST" type="button">🚩 Аванпосты</button>
+      <button class="mini-btn ${mapFilter === 'TOWER' ? 'gold' : ''}" data-mfilter="TOWER" type="button">🗼 Разбойники</button>
+    </div>
+
     <div class="canvas-wrap">
       <canvas id="world-canvas" width="500" height="252"></canvas>
       <div class="canvas-overlay-top">
@@ -179,9 +205,17 @@ export function renderWorldMapView(container, state, onMutate, onGoBattle) {
     </div>
   `;
 
+  container.querySelectorAll('[data-mfilter]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      mapFilter = btn.dataset.mfilter;
+      sound.click();
+      onMutate();
+    });
+  });
+
   const canvas = container.querySelector('#world-canvas');
   if (canvas) {
-    drawWorldCanvas(canvas, state, realmTargets);
+    drawWorldCanvas(canvas, state, visibleTargets);
     canvas.addEventListener('click', (e) => {
       const rect = canvas.getBoundingClientRect();
       const clickX = ((e.clientX - rect.left) * canvas.width) / rect.width;

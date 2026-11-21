@@ -90,7 +90,7 @@ export function renderBattleView(container, state, onMutate) {
     </div>
 
     <div class="card">
-      <h3>PvP-рейды на замки игроков</h3>
+      <h3>Войны королевств и PvP-рейды</h3>
       ${BALANCE.rivals
         .map((r) => {
           const status = r.shielded ? '🛡️ Щит мира' : r.online ? '🟢 В сети' : '⚪ Оффлайн';
@@ -280,6 +280,7 @@ export function renderBattleView(container, state, onMutate) {
       if (win) {
         state.victoriesCount = (state.victoriesCount || 0) + 1;
         state.allianceWarPoints = (state.allianceWarPoints || 0) + 35;
+        state.bpXp = (state.bpXp || 0) + 60;
         for (const [res, amt] of Object.entries(rival.loot)) {
           state.resources[res] = (state.resources[res] || 0) + amt;
         }
