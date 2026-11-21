@@ -7,79 +7,79 @@ export const BALANCE = {
     great_empire: {
       id: 'great_empire',
       name: 'Великая империя',
-      perkDesc: '+10% к общему порядку и баланс ресурсов',
+      perkDesc: '+12 порядок и сбалансированная добыча',
       orderBonus: 12,
-      prodMult: 1.05,
+      prodMult: 1.06,
       atkMult: 1.0,
       wallMult: 1.0,
-      groundTop: '#4c7e3e',
-      groundBottom: '#2d5324',
+      groundTop: '#4e833d',
+      groundBottom: '#284d1f',
       accent: '#78e08f'
     },
     burning_sands: {
       id: 'burning_sands',
       name: 'Пылающие пески',
-      perkDesc: '+20% добыча золота и ускоренный марш (+10%)',
+      perkDesc: '+12% добыча и +10% скорость марша',
       orderBonus: 0,
       prodMult: 1.12,
       atkMult: 1.05,
-      wallMult: 0.95,
+      wallMult: 0.96,
       marchMult: 1.1,
-      groundTop: '#cfa35a',
-      groundBottom: '#9b7232',
+      groundTop: '#d2a55a',
+      groundBottom: '#936929',
       accent: '#f6b93b'
     },
     everwinter: {
       id: 'everwinter',
       name: 'Вечный холод',
-      perkDesc: '+20% прочность стен, но выше расход еды',
+      perkDesc: '+20% прочность стен, выше расход еды',
       orderBonus: 5,
       prodMult: 1.0,
       atkMult: 1.0,
       wallMult: 1.2,
       foodUpkeepMult: 1.15,
-      groundTop: '#9fc0d4',
-      groundBottom: '#6a8ba0',
+      groundTop: '#9fc3d8',
+      groundBottom: '#5e8196',
       accent: '#82ccdd'
     },
     fire_peaks: {
       id: 'fire_peaks',
       name: 'Огненные вершины',
-      perkDesc: '+18% сила атаки в штурмах и богатые трофеи',
+      perkDesc: '+18% сила атаки и трофеи гор',
       orderBonus: 0,
       prodMult: 1.08,
       atkMult: 1.18,
       wallMult: 1.05,
-      groundTop: '#6b3630',
-      groundBottom: '#3c1b17',
+      groundTop: '#6e352e',
+      groundBottom: '#391814',
       accent: '#ff6b6b'
     }
   },
 
   startingResources: {
-    wood: 850,
-    stone: 750,
-    food: 950,
-    gold: 650,
-    rubies: 190
+    wood: 900,
+    stone: 800,
+    food: 1000,
+    gold: 750,
+    rubies: 240
   },
 
   startingTroops: {
-    maceman: 35,
-    crossbow: 25,
-    knight: 15
+    maceman: 40,
+    crossbow: 30,
+    knight: 18
   },
 
   startingTools: {
-    ladder: 16,
-    ram: 10,
-    mantlet: 10
+    ladder: 18,
+    ram: 12,
+    mantlet: 12
   },
 
   buildings: {
     keep: {
       name: 'Цитадель',
-      desc: 'Сердце замка: открывает волны штурма, повышает вместимость склада и порядок.',
+      desc: 'Главная крепость замка: открывает волны штурма, расширяет склад и повышает порядок.',
       baseCost: { wood: 140, stone: 130, gold: 90 },
       baseTimeSec: 10,
       costScale: 1.45,
@@ -87,8 +87,8 @@ export const BALANCE = {
       orderBonus: 15
     },
     wall: {
-      name: 'Стены и ров',
-      desc: 'Защита флангов и ворот при обороне замка и набегах на замок.',
+      name: 'Стены и башни',
+      desc: 'Крепостные стены, бойницы и ров — усиливают защиту при обороне замка.',
       baseCost: { wood: 90, stone: 140, gold: 60 },
       baseTimeSec: 9,
       costScale: 1.4,
@@ -97,22 +97,22 @@ export const BALANCE = {
     },
     barracks: {
       name: 'Казармы',
-      desc: 'Вербовка булавщиков, арбалетчиков и рыцарей; ускоряет обучение.',
+      desc: 'Тренировочный двор и казармы для найма воинов и ускорения вербовки.',
       baseCost: { wood: 100, stone: 85, gold: 70 },
       baseTimeSec: 8,
       costScale: 1.38,
       trainSpeedPerLvl: 0.12
     },
     workshop: {
-      name: 'Осадная мастерская',
-      desc: 'Производство лестниц, таранов и щитов для прорыва стен и ворот.',
+      name: 'Осадный двор',
+      desc: 'Изготовление лестниц, таранов и щитов для штурма укреплений.',
       baseCost: { wood: 110, stone: 75, gold: 65 },
       baseTimeSec: 8,
       costScale: 1.38
     },
     farm: {
-      name: 'Ферма и мельница',
-      desc: 'Производство еды для содержания армии и расширение амбара.',
+      name: 'Ферма и амбар',
+      desc: 'Производство провианта и расширение запасов еды для армии.',
       baseCost: { wood: 75, stone: 45, gold: 25 },
       baseTimeSec: 7,
       costScale: 1.34,
@@ -121,7 +121,7 @@ export const BALANCE = {
     },
     sawmill: {
       name: 'Лесопилка',
-      desc: 'Добыча древесины для зданий и осадных орудий.',
+      desc: 'Заготовка древесины для строительства и осадных орудий.',
       baseCost: { wood: 55, stone: 55, gold: 25 },
       baseTimeSec: 7,
       costScale: 1.34,
@@ -129,15 +129,15 @@ export const BALANCE = {
     },
     quarry: {
       name: 'Каменоломня',
-      desc: 'Добыча камня для стен, цитадели и мастерских.',
+      desc: 'Добыча камня для башен, цитадели и укреплений.',
       baseCost: { wood: 75, stone: 45, gold: 30 },
       baseTimeSec: 8,
       costScale: 1.34,
       stonePerMin: 28
     },
     tavern: {
-      name: 'Таверна и декор',
-      desc: 'Поднимает общественный порядок и усиливает разведку.',
+      name: 'Таверна и гильдия',
+      desc: 'Поднимает боевой дух и общественный порядок в замке.',
       baseCost: { wood: 80, stone: 70, gold: 95 },
       baseTimeSec: 8,
       costScale: 1.36,
@@ -151,10 +151,30 @@ export const BALANCE = {
     { id: 'dec_fest', name: 'Турнирная площадь', orderBonus: 110, cost: { wood: 180, stone: 180, gold: 200, rubies: 35 } }
   ],
 
+  shopItems: [
+    { id: 'sh_pack_res', name: 'Королевский обоз ресурсов', desc: '+400 дерева, +400 камня, +400 еды, +300 монет', costRubies: 25, grant: { wood: 400, stone: 400, food: 400, gold: 300 } },
+    { id: 'sh_pack_knights', name: 'Дружина тяжёлых рыцарей', desc: '+15 Рыцарей и +15 Арбалетчиков в гарнизон', costRubies: 35, grantTroops: { knight: 15, crossbow: 15 } },
+    { id: 'sh_pack_siege', name: 'Осадный арсенал', desc: '+10 Лестниц, +10 Таранов, +10 Щитов', costRubies: 30, grantTools: { ladder: 10, ram: 10, mantlet: 10 } },
+    { id: 'sh_pack_bp', name: 'Ускорение Боевого пропуска (+250 BP)', desc: 'Мгновенно добавляет +250 опыта БП', costRubies: 40, grantBp: 250 }
+  ],
+
+  dailyRewards: [
+    { day: 1, title: 'День 1: Приветственный дар', reward: { gold: 150, wood: 180, rubies: 15, bp: 60 } },
+    { day: 2, title: 'День 2: Камень и сталь', reward: { stone: 220, gold: 180, rubies: 20, bp: 80 } },
+    { day: 3, title: 'День 3: Знамя похода', reward: { food: 260, gold: 220, rubies: 25, bp: 100 } },
+    { day: 4, title: 'День 4: Казна лорда', reward: { gold: 350, wood: 250, stone: 250, rubies: 40, bp: 140 } }
+  ],
+
+  eventsList: [
+    { id: 'ev_nomads', name: 'Нашествие кочевников', desc: 'Усиленные трофеи за штурм лагерей и башен (+25% очков войны)', bonusText: 'Активно сейчас' },
+    { id: 'ev_fair', name: 'Королевская ярмарка', desc: 'Выгодный обмен и повышенный приток монет при сборе налогов', bonusText: 'Активно сейчас' },
+    { id: 'ev_clan_war', name: 'Битва гильдий за пограничье', desc: 'Собирайте ралли, захватывайте аванпосты и поднимайте альянс в топе', bonusText: 'Сезон I' }
+  ],
+
   units: {
     maceman: {
       name: 'Булавщик',
-      role: 'Ближний бой (силён против стрелков)',
+      role: 'Ближний бой',
       cost: { gold: 14, food: 8 },
       trainSec: 3,
       upkeepFoodPerMin: 0.45,
@@ -163,7 +183,7 @@ export const BALANCE = {
     },
     crossbow: {
       name: 'Арбалетчик',
-      role: 'Дальний бой (бьёт по рыцарям издалека)',
+      role: 'Дальний бой',
       cost: { gold: 18, food: 9 },
       trainSec: 4,
       upkeepFoodPerMin: 0.55,
@@ -172,7 +192,7 @@ export const BALANCE = {
     },
     knight: {
       name: 'Рыцарь',
-      role: 'Элита штурма (пробивает строй и стены)',
+      role: 'Тяжёлая атака',
       cost: { gold: 34, food: 15 },
       trainSec: 6,
       upkeepFoodPerMin: 0.95,
@@ -184,7 +204,7 @@ export const BALANCE = {
   tools: {
     ladder: {
       name: 'Штурм. лестница',
-      desc: 'Срезает бонус защиты стен на флангах',
+      desc: 'Срезает защиту стен на флангах',
       cost: { wood: 18, stone: 6 },
       wallNegate: 0.08
     },
@@ -196,7 +216,7 @@ export const BALANCE = {
     },
     mantlet: {
       name: 'Осадный щит',
-      desc: 'Снижает урон вражеских стрелков',
+      desc: 'Снижает урон стрелков',
       cost: { wood: 20, gold: 10 },
       rangedReduce: 0.07
     }
@@ -257,12 +277,12 @@ export const BALANCE = {
   },
 
   quests: [
-    { id: 'q_build', chapter: 'Глава I', title: 'Застройка королевства', desc: 'Суммарный уровень построек замка: цель 14', target: 14, rewardGold: 180, rewardRubies: 20 },
-    { id: 'q_raid', chapter: 'Глава I', title: 'Гроза разбойников', desc: 'Победоносных походов на карте: цель 2', target: 2, rewardGold: 220, rewardRubies: 30 },
-    { id: 'q_order', chapter: 'Глава I', title: 'Процветание подданных', desc: 'Общественный порядок замка: цель 210', target: 210, rewardGold: 200, rewardRubies: 25 },
-    { id: 'q_spy', chapter: 'Глава II', title: 'Глаза и уши короны', desc: 'Разведанных целей на карте: цель 2', target: 2, rewardGold: 190, rewardRubies: 25 },
-    { id: 'q_outpost', chapter: 'Глава II', title: 'Властелин пограничья', desc: 'Захваченных аванпостов: цель 1', target: 1, rewardGold: 300, rewardRubies: 40 },
-    { id: 'q_keep4', chapter: 'Глава III', title: 'Сердце империи', desc: 'Уровень Цитадели: цель 4', target: 4, rewardGold: 350, rewardRubies: 50 }
+    { id: 'q_build', chapter: 'Глава I', title: 'Застройка королевства', desc: 'Суммарный уровень построек замка: цель 14', target: 14, rewardGold: 180, rewardRubies: 20, rewardBp: 80 },
+    { id: 'q_raid', chapter: 'Глава I', title: 'Гроза разбойников', desc: 'Победоносных походов на карте: цель 2', target: 2, rewardGold: 220, rewardRubies: 30, rewardBp: 100 },
+    { id: 'q_order', chapter: 'Глава I', title: 'Процветание подданных', desc: 'Общественный порядок замка: цель 210', target: 210, rewardGold: 200, rewardRubies: 25, rewardBp: 90 },
+    { id: 'q_spy', chapter: 'Глава II', title: 'Глаза и уши короны', desc: 'Разведанных целей на карте: цель 2', target: 2, rewardGold: 190, rewardRubies: 25, rewardBp: 90 },
+    { id: 'q_outpost', chapter: 'Глава II', title: 'Властелин пограничья', desc: 'Захваченных аванпостов: цель 1', target: 1, rewardGold: 300, rewardRubies: 40, rewardBp: 120 },
+    { id: 'q_keep4', chapter: 'Глава III', title: 'Сердце империи', desc: 'Уровень Цитадели: цель 4', target: 4, rewardGold: 350, rewardRubies: 50, rewardBp: 150 }
   ],
 
   alliancePerks: [
@@ -327,7 +347,7 @@ export const BALANCE = {
       kind: 'TOWER',
       name: 'Башня разбойников (Ур. 3)',
       realm: 'great_empire',
-      x: 0.25,
+      x: 0.24,
       y: 0.30,
       distanceTiles: 2,
       wallBonus: 0.25,
@@ -340,26 +360,26 @@ export const BALANCE = {
       }
     },
     {
-      id: 'village_green_1',
-      kind: 'VILLAGE',
-      name: 'Деревня плодородия',
+      id: 'player_korsar_map',
+      kind: 'PLAYER_CASTLE',
+      name: 'Замок Лорда Корсара',
       realm: 'great_empire',
       x: 0.76,
-      y: 0.26,
+      y: 0.28,
       distanceTiles: 3,
-      wallBonus: 0.15,
-      gateBonus: 0.15,
-      loot: { wood: 120, stone: 90, food: 280, gold: 95, rubies: 2 },
+      wallBonus: 0.30,
+      gateBonus: 0.35,
+      loot: { wood: 220, stone: 190, food: 180, gold: 240, rubies: 6 },
       defense: {
-        left: { maceman: 6, crossbow: 4, knight: 0 },
-        center: { maceman: 9, crossbow: 6, knight: 1 },
-        right: { maceman: 6, crossbow: 4, knight: 0 }
+        left: { maceman: 12, crossbow: 8, knight: 2 },
+        center: { maceman: 16, crossbow: 12, knight: 4 },
+        right: { maceman: 12, crossbow: 8, knight: 2 }
       }
     },
     {
       id: 'outpost_green_1',
       kind: 'OUTPOST',
-      name: 'Каменный аванпост',
+      name: 'Свободный аванпост',
       realm: 'great_empire',
       x: 0.78,
       y: 0.74,
@@ -378,7 +398,7 @@ export const BALANCE = {
       kind: 'EVENT',
       name: 'Лагерь кочевников',
       realm: 'burning_sands',
-      x: 0.30,
+      x: 0.28,
       y: 0.72,
       distanceTiles: 4,
       wallBonus: 0.40,
@@ -393,9 +413,9 @@ export const BALANCE = {
     {
       id: 'frost_fortress',
       kind: 'TOWER',
-      name: 'Башня варваров Севера',
+      name: 'Крепость ледяных ярлов',
       realm: 'everwinter',
-      x: 0.72,
+      x: 0.74,
       y: 0.34,
       distanceTiles: 5,
       wallBonus: 0.50,
@@ -410,7 +430,7 @@ export const BALANCE = {
     {
       id: 'dragon_cult_peaks',
       kind: 'TOWER',
-      name: 'Крепость культа дракона',
+      name: 'Цитадель Огненных вершин',
       realm: 'fire_peaks',
       x: 0.28,
       y: 0.28,
