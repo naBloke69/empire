@@ -9,8 +9,9 @@ import { renderBattleView } from './ui/battleModal.js';
 import { renderCommandView } from './ui/commandView.js';
 import { sound } from './audio/sound.js';
 
-const PROFILES_KEY = 'e4k_profiles_v5';
-let systemSubTab = 'quests';
+const PROFILES_KEY = 'e4k_profiles_v6';
+let systemSubTab = 'account';
+let authMode = 'login';
 let toastTimer = null;
 
 function showToast(text) {
@@ -43,6 +44,7 @@ function saveCurrentProfile(stateObj) {
 
 let state = loadState();
 sound.enabled = state.soundEnabled !== false;
+document.body.classList.toggle('compact-ui', Boolean(state.compactUi));
 advanceSimulation(state, Date.now(), false, showToast);
 saveState(state);
 saveCurrentProfile(state);
@@ -55,41 +57,197 @@ const viewEl = document.getElementById('view-container');
 const logListEl = document.getElementById('event-log');
 const toggleLogBtn = document.getElementById('btn-toggle-log');
 const realmSelectEl = document.getElementById('realm-select');
-const taxBtn = document.getElementById('btn-tax');
+const openShopBtn = document.getElementById('btn-open-shop');
+const openEventsBtn = document.getElementById('btn-open-events');
 const rubyBoostBtn = document.getElementById('btn-ruby-boost');
 
 function getQuestProgress(qId) {
   const econ = getEconomyStats(state);
-  if (qId === 'q_build') {
-    return state.slots.reduce((s, slot) => s + (slot.level || 0), 0);
-  }
-  if (qId === 'q_raid') {
-    return state.victoriesCount || 0;
-  }
-  if (qId === 'q_order') {
-    return econ.publicOrder;
-  }
-  if (qId === 'q_spy') {
-    return (state.scoutedIds || []).length;
-  }
-  if (qId === 'q_outpost') {
-    return (state.capturedOutposts || []).length;
-  }
-  if (qId === 'q_keep4') {
-    return state.slots.find((s) => s.type === 'keep')?.level || 1;
-  }
+  if (qId === 'q_build') return state.slots.reduce((s, slot) => s + (slot.level || 0), 0);
+  if (qId === 'q_raid') return state.victoriesCount || 0;
+  if (qId === 'q_order') return econ.publicOrder;
+  if (qId === 'q_spy') return (state.scoutedIds || []).length;
+  if (qId === 'q_outpost') return (state.capturedOutposts || []).length;
+  if (qId === 'q_keep4') return state.slots.find((s) => s.type === 'keep')?.level || 1;
   return 0;
 }
 
 function renderSystemView(container) {
   const profiles = Object.keys(getProfilesMap());
   const serialized = JSON.stringify(state);
+  const bpXp = state.bpXp || 0;
+  const bpLevel = 1 + Math.floor(bpXp / 100);
+  const bpProgressPct = bpXp % 100;
 
   let sectionHtml = '';
 
-  if (systemSubTab === 'quests') {
+  if (!state.welcomed) {
+    sectionHtml += `
+      <div class="card parchment">
+        <h3>👑 Приветствие лорда в Empire: Four Kingdoms</h3>
+        <p class="muted">Возведи цитадель, соберите дружину, ведите войны альянсов и покоряйте четыре королевства.</p>
+        <button id="btn-accept-welcome" class="action-btn" type="button">Начать правление</button>
+      </div>
+    `;
+  }
+
+  if (systemSubTab === 'account') {
+    sectionHtml += `
+      <div class="card">
+        <h3>👑 Аккаунт и Боевой пропуск (Ур. БП ${bpLevel} • ${bpXp} XP)</h3>
+        <p class="muted">Статус пропуска: <strong>${state.bpVip ? 'Королевский VIP БП' : 'Базовый БП'}</strong> • Прогресс уровня: ${bpProgressPct}/100</p>
+        <div class="quest-bar" style="margin-bottom:8px;"><div class="quest-fill" style="width:${bpProgressPct}%"></div></div>
+        <div class="row" style="margin-bottom:8px;">
+          <button id="btn-claim-bp" class="mini-btn gold" type="button">Забрать награду БП (+🪙120 +💎15)</button>
+          <button id="btn-toggle-vip" class="mini-btn ${state.bpVip ? 'ok' : 'ruby'}" type="button">
+            ${state.bpVip ? 'VIP БП активен' : 'Открыть VIP БП (50💎)'}
+          </button>
+        </div>
+
+        <div class="row" style="margin-bottom:8px;">
+          <button class="mini-btn ${authMode === 'login' ? 'gold' : ''}" data-auth-mode="login" type="button">Вход в аккаунт</button>
+          <button class="mini-btn ${authMode === 'register' ? 'gold' : ''}" data-auth-mode="register" type="button">Регистрация</button>
+        </div>
+
+        ${
+          authMode === 'login'
+            ? `
+          <div class="row" style="margin-bottom:8px;">
+            <input id="auth-nick" type="text" value="${state.accountName || 'Лорд Stezzy'}" placeholder="Никнейм лорда" />
+            <input id="auth-pass" type="password" placeholder="Пароль" />
+            <button id="btn-do-login" class="action-btn" type="button">Войти</button>
+          </div>
+        `
+            : `
+          <div class="row" style="margin-bottom:8px;">
+            <input id="reg-nick" type="text" placeholder="Новый никнейм" />
+            <input id="reg-pass" type="password" placeholder="Пароль" />
+            <input id="reg-pass2" type="password" placeholder="Повторите пароль" />
+            <button id="btn-do-register" class="action-btn" type="button">Создать аккаунт</button>
+          </div>
+        `
+        }
+
+        ${
+          profiles.length
+            ? `<div class="row" style="margin-bottom:8px;">
+                ${profiles
+                  .map(
+                    (name) =>
+                      `<button class="mini-btn ${name === state.accountName ? 'gold' : ''}" data-load-profile="${name}" type="button">👤 ${name}</button>`
+                  )
+                  .join('')}
+              </div>`
+            : ''
+        }
+        <button id="btn-new-account" class="action-btn secondary" type="button">+ Новый аккаунт (чистый старт)</button>
+      </div>
+
+      <div class="card">
+        <h3>⚙️ Расширенные настройки империи</h3>
+        <div class="row" style="margin-bottom:8px;">
+          <button id="btn-quick-mode" class="action-btn secondary" type="button">
+            Темп (x2): ${state.quickMode ? 'Вкл' : 'Выкл'}
+          </button>
+          <button id="btn-sound" class="action-btn secondary" type="button">
+            Звук: ${sound.enabled ? 'Вкл' : 'Выкл'}
+          </button>
+          <button id="btn-compact-ui" class="action-btn secondary" type="button">
+            Компактный UI: ${state.compactUi ? 'Вкл' : 'Выкл'}
+          </button>
+          <button id="btn-autosave" class="action-btn secondary" type="button">
+            Автосохранение: ${state.autoSaveEnabled !== false ? 'Вкл' : 'Выкл'}
+          </button>
+          <button id="btn-reset" class="action-btn danger" type="button">Сброс</button>
+        </div>
+        <label class="muted">Экспорт / импорт сохранения (JSON)</label>
+        <textarea id="save-json" rows="4">${serialized}</textarea>
+        <div class="row" style="margin-top:8px;">
+          <button id="btn-copy-json" class="mini-btn gold" type="button">Копировать JSON</button>
+          <button id="btn-import" class="action-btn secondary" type="button">Загрузить JSON</button>
+        </div>
+      </div>
+    `;
+  } else if (systemSubTab === 'shop') {
+    sectionHtml += `
+      <div class="card">
+        <h3>🛒 Королевский магазин (Рубины: 💎${Math.floor(state.resources.rubies || 0)})</h3>
+        ${BALANCE.shopItems
+          .map((item) => {
+            const ok = (state.resources.rubies || 0) >= item.costRubies;
+            return `
+              <div class="map-node">
+                <div>
+                  <strong>${item.name}</strong>
+                  <div class="muted">${item.desc} • Цена: 💎${item.costRubies}</div>
+                </div>
+                <button class="mini-btn gold" data-buy-shop="${item.id}" ${ok ? '' : 'disabled'} type="button">Купить</button>
+              </div>
+            `;
+          })
+          .join('')}
+      </div>
+
+      <div class="card">
+        <h3>⚖️ Рынок ресурсов</h3>
+        ${BALANCE.marketOffers
+          .map((o) => {
+            const labelMap = { wood: '🪵 Дерево', stone: '🪨 Камень', food: '🌾 Еда', gold: '🪙 Монеты' };
+            const ok = (state.resources[o.want] || 0) >= o.wantAmt;
+            return `
+              <div class="map-node">
+                <div>
+                  <strong>${o.seller}</strong>
+                  <div class="muted">Отдаёт: ${o.giveAmt} ${labelMap[o.give]} • Просит: ${o.wantAmt} ${labelMap[o.want]}</div>
+                </div>
+                <button class="mini-btn gold" data-market="${o.id}" ${ok ? '' : 'disabled'} type="button">Обменять</button>
+              </div>
+            `;
+          })
+          .join('')}
+      </div>
+    `;
+  } else if (systemSubTab === 'events') {
+    sectionHtml += `
+      <div class="card">
+        <h3>🎁 Подарки за ежедневный вход</h3>
+        ${BALANCE.dailyRewards
+          .map((d) => {
+            const claimed = (state.claimedDailyDays || []).includes(d.day);
+            return `
+              <div class="map-node">
+                <div>
+                  <strong>${d.title}</strong>
+                  <div class="muted">Награда: 🪙${d.reward.gold || 0} 💎${d.reward.rubies || 0} +${d.reward.bp || 0} BP XP</div>
+                </div>
+                <button class="mini-btn ${claimed ? 'ok' : 'gold'}" data-claim-day="${d.day}" ${claimed ? 'disabled' : ''} type="button">
+                  ${claimed ? 'Забрано' : 'Забрать'}
+                </button>
+              </div>
+            `;
+          })
+          .join('')}
+      </div>
+
+      <div class="card">
+        <h3>🔥 Активные события королевств</h3>
+        ${BALANCE.eventsList
+          .map(
+            (ev) => `
+          <div class="map-node">
+            <div>
+              <strong>${ev.name}</strong> <span class="muted">• ${ev.bonusText}</span>
+              <div class="muted">${ev.desc}</div>
+            </div>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+    `;
+  } else if (systemSubTab === 'quests') {
     const claimedCount = (state.claimedQuestIds || []).length;
-    sectionHtml = `
+    sectionHtml += `
       <div class="card parchment">
         <h3>📖 ${BALANCE.storyChapter.title}</h3>
         <p class="muted">${BALANCE.storyChapter.summary}</p>
@@ -109,7 +267,7 @@ function renderSystemView(container) {
                 <div class="row" style="justify-content:space-between;">
                   <div>
                     <span class="muted">[${q.chapter}]</span> <strong>${q.title}</strong>
-                    <div class="muted">${q.desc} (${cur}/${q.target}) • Награда: 🪙${q.rewardGold} 💎${q.rewardRubies}</div>
+                    <div class="muted">${q.desc} (${cur}/${q.target}) • Награда: 🪙${q.rewardGold} 💎${q.rewardRubies} +${q.rewardBp || 50} BP</div>
                   </div>
                   <button class="mini-btn ${claimed ? 'ok' : ready ? 'gold' : ''}" data-claim-quest="${q.id}" ${ready ? '' : 'disabled'} type="button">
                     ${claimed ? 'Получено' : ready ? 'Забрать' : 'В работе'}
@@ -123,7 +281,7 @@ function renderSystemView(container) {
       </div>
     `;
   } else if (systemSubTab === 'research') {
-    sectionHtml = `
+    sectionHtml += `
       <div class="card">
         <h3>Академия и исследования</h3>
         ${BALANCE.researchTree
@@ -145,121 +303,15 @@ function renderSystemView(container) {
           .join('')}
       </div>
     `;
-  } else if (systemSubTab === 'alliance') {
-    const chatItems = state.allianceChat || [];
-    sectionHtml = `
-      <div class="card">
-        <h3>Альянс: ${state.allianceName || 'Железный легион'} • Казна: 🪙${state.allianceTreasury || 0} • Очки войны: ${state.allianceWarPoints || 0}</h3>
-        <div class="row" style="margin-bottom:8px;">
-          <button id="btn-donate-alliance" class="action-btn secondary" type="button">Взнос в казну (🪙50)</button>
-          <button id="btn-join-rally" class="mini-btn gold" type="button">🚩 Сбор на цель (+15 бойцов)</button>
-          <button id="btn-share-coord" class="mini-btn" type="button">📍 Метка в чат</button>
-        </div>
-        <p class="muted">Активный сбор (ралли): <strong>${state.activeRallyTarget}</strong> • Вложено в сбор: ${state.rallyJoinedTroops || 0} бойцов</p>
-        ${BALANCE.alliancePerks
-          .map((perk) => {
-            const active = (state.activeAlliancePerks || []).includes(perk.id);
-            return `
-              <div class="map-node">
-                <div>
-                  <strong>${perk.name}</strong>
-                  <div class="muted">${perk.desc} (Казна: 🪙${perk.costGold})</div>
-                </div>
-                <button class="mini-btn ${active ? 'ok' : 'gold'}" data-perk="${perk.id}" type="button">
-                  ${active ? 'Активен' : 'Активировать'}
-                </button>
-              </div>
-            `;
-          })
-          .join('')}
-      </div>
-
-      <div class="card">
-        <h3>Чат союза</h3>
-        ${chatItems
-          .slice(0, 6)
-          .map((m) => `<p class="muted"><strong>${m.author}:</strong> ${m.text}</p>`)
-          .join('')}
-        <div class="row" style="margin-top:6px;">
-          <input id="alliance-chat-input" type="text" placeholder="Сообщение соклановцам..." />
-          <button id="btn-send-chat" class="action-btn" type="button">Отправить</button>
-        </div>
-      </div>
-    `;
-  } else if (systemSubTab === 'market') {
-    sectionHtml = `
-      <div class="card">
-        <h3>Онлайн-рынок ресурсов</h3>
-        ${BALANCE.marketOffers
-          .map((o) => {
-            const labelMap = { wood: '🪵 Дерево', stone: '🪨 Камень', food: '🌾 Еда', gold: '🪙 Монеты' };
-            const ok = (state.resources[o.want] || 0) >= o.wantAmt;
-            return `
-              <div class="map-node">
-                <div>
-                  <strong>${o.seller}</strong>
-                  <div class="muted">Отдаёт: ${o.giveAmt} ${labelMap[o.give] || o.give} • Просит: ${o.wantAmt} ${labelMap[o.want] || o.want}</div>
-                </div>
-                <button class="mini-btn gold" data-market="${o.id}" ${ok ? '' : 'disabled'} type="button">
-                  Обменять
-                </button>
-              </div>
-            `;
-          })
-          .join('')}
-      </div>
-    `;
-  } else {
-    sectionHtml = `
-      <div class="card">
-        <h3>Аккаунт и профили империи</h3>
-        <div class="row" style="margin-bottom:8px;">
-          <input id="account-name-input" type="text" value="${state.accountName || 'Лорд Stezzy'}" placeholder="Имя правителя" />
-          <button id="btn-save-profile" class="action-btn" type="button">Сохранить</button>
-        </div>
-        ${
-          profiles.length
-            ? `<div class="row" style="margin-bottom:8px;">
-                ${profiles
-                  .map(
-                    (name) =>
-                      `<button class="mini-btn ${name === state.accountName ? 'gold' : ''}" data-load-profile="${name}" type="button">👤 ${name}</button>`
-                  )
-                  .join('')}
-              </div>`
-            : ''
-        }
-        <button id="btn-new-account" class="action-btn secondary" type="button">+ Новый аккаунт (чистый старт)</button>
-      </div>
-
-      <div class="card">
-        <h3>Настройки и сохранение</h3>
-        <div class="row" style="margin-bottom:8px;">
-          <button id="btn-quick-mode" class="action-btn secondary" type="button">
-            Темп (x2): ${state.quickMode ? 'Вкл' : 'Выкл'}
-          </button>
-          <button id="btn-sound" class="action-btn secondary" type="button">
-            Звук: ${sound.enabled ? 'Вкл' : 'Выкл'}
-          </button>
-          <button id="btn-reset" class="action-btn danger" type="button">Сброс</button>
-        </div>
-        <label class="muted">Экспорт / импорт сохранения (JSON)</label>
-        <textarea id="save-json" rows="4">${serialized}</textarea>
-        <div class="row" style="margin-top:8px;">
-          <button id="btn-copy-json" class="mini-btn gold" type="button">Копировать JSON</button>
-          <button id="btn-import" class="action-btn secondary" type="button">Загрузить JSON</button>
-        </div>
-      </div>
-    `;
   }
 
   container.innerHTML = `
     <div class="subtabs">
+      <button class="mini-btn ${systemSubTab === 'account' ? 'gold' : ''}" data-subtab="account" type="button">👑 Аккаунт и БП</button>
+      <button class="mini-btn ${systemSubTab === 'shop' ? 'gold' : ''}" data-subtab="shop" type="button">🛒 Магазин</button>
+      <button class="mini-btn ${systemSubTab === 'events' ? 'gold' : ''}" data-subtab="events" type="button">🎁 События</button>
       <button class="mini-btn ${systemSubTab === 'quests' ? 'gold' : ''}" data-subtab="quests" type="button">🏆 Задания</button>
       <button class="mini-btn ${systemSubTab === 'research' ? 'gold' : ''}" data-subtab="research" type="button">🔬 Исследования</button>
-      <button class="mini-btn ${systemSubTab === 'alliance' ? 'gold' : ''}" data-subtab="alliance" type="button">🛡️ Альянс</button>
-      <button class="mini-btn ${systemSubTab === 'market' ? 'gold' : ''}" data-subtab="market" type="button">⚖️ Рынок</button>
-      <button class="mini-btn ${systemSubTab === 'account' ? 'gold' : ''}" data-subtab="account" type="button">⚙️ Аккаунт</button>
     </div>
     ${sectionHtml}
   `;
@@ -272,6 +324,131 @@ function renderSystemView(container) {
     });
   });
 
+  container.querySelector('#btn-accept-welcome')?.addEventListener('click', () => {
+    state.welcomed = true;
+    showToast('Приветствуем в Empire: Four Kingdoms!');
+    sound.success();
+    syncAndRender(false);
+  });
+
+  container.querySelectorAll('[data-auth-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      authMode = btn.dataset.authMode;
+      sound.click();
+      render();
+    });
+  });
+
+  container.querySelector('#btn-do-login')?.addEventListener('click', () => {
+    const nick = (container.querySelector('#auth-nick')?.value || '').trim();
+    const pass = container.querySelector('#auth-pass')?.value || '';
+    if (!nick || !pass) {
+      showToast('Введите никнейм и пароль');
+      sound.alert();
+      return;
+    }
+    const map = getProfilesMap();
+    if (map[nick]) {
+      state = { ...createInitialState(), ...map[nick], accountName: nick, welcomed: true };
+    } else {
+      state.accountName = nick;
+      state.accountPasswordHash = pass;
+      state.welcomed = true;
+    }
+    saveCurrentProfile(state);
+    showToast(`Вход выполнен: ${nick}`);
+    sound.success();
+    syncAndRender(false);
+  });
+
+  container.querySelector('#btn-do-register')?.addEventListener('click', () => {
+    const nick = (container.querySelector('#reg-nick')?.value || '').trim();
+    const p1 = container.querySelector('#reg-pass')?.value || '';
+    const p2 = container.querySelector('#reg-pass2')?.value || '';
+    if (!nick || p1.length < 3) {
+      showToast('Укажите ник и пароль (от 3 символов)');
+      sound.alert();
+      return;
+    }
+    if (p1 !== p2) {
+      showToast('Пароли не совпадают!');
+      sound.alert();
+      return;
+    }
+    state = createInitialState();
+    state.accountName = nick;
+    state.accountPasswordHash = p1;
+    state.welcomed = true;
+    saveCurrentProfile(state);
+    showToast(`Аккаунт "${nick}" зарегистрирован!`);
+    sound.success();
+    syncAndRender(false);
+  });
+
+  container.querySelector('#btn-claim-bp')?.addEventListener('click', () => {
+    const mult = state.bpVip ? 2 : 1;
+    state.resources.gold = (state.resources.gold || 0) + 120 * mult;
+    state.resources.rubies = (state.resources.rubies || 0) + 15 * mult;
+    state.bpXp = (state.bpXp || 0) + 50;
+    showToast(`Получена награда БП (x${mult})!`);
+    sound.success();
+    syncAndRender(false);
+  });
+
+  container.querySelector('#btn-toggle-vip')?.addEventListener('click', () => {
+    if (state.bpVip) return;
+    if ((state.resources.rubies || 0) < 50) {
+      showToast('Нужно 50 рубинов для VIP БП');
+      sound.alert();
+      return;
+    }
+    state.resources.rubies -= 50;
+    state.bpVip = true;
+    showToast('Активирован Королевский VIP БП!');
+    sound.success();
+    syncAndRender(false);
+  });
+
+  container.querySelectorAll('[data-buy-shop]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const item = BALANCE.shopItems.find((x) => x.id === btn.dataset.buyShop);
+      if (!item || (state.resources.rubies || 0) < item.costRubies) return;
+      state.resources.rubies -= item.costRubies;
+      for (const [res, amt] of Object.entries(item.grant || {})) {
+        state.resources[res] = (state.resources[res] || 0) + amt;
+      }
+      for (const [uKey, cnt] of Object.entries(item.grantTroops || {})) {
+        state.troops[uKey] = (state.troops[uKey] || 0) + cnt;
+      }
+      for (const [tKey, cnt] of Object.entries(item.grantTools || {})) {
+        state.tools[tKey] = (state.tools[tKey] || 0) + cnt;
+      }
+      if (item.grantBp) state.bpXp = (state.bpXp || 0) + item.grantBp;
+      pushLog(state, `Покупка в магазине: ${item.name}`);
+      showToast(`Куплено: ${item.name}`);
+      sound.success();
+      syncAndRender(false);
+    });
+  });
+
+  container.querySelectorAll('[data-claim-day]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const dayNum = parseInt(btn.dataset.claimDay, 10);
+      const d = BALANCE.dailyRewards.find((x) => x.day === dayNum);
+      if (!d || (state.claimedDailyDays || []).includes(dayNum)) return;
+      state.claimedDailyDays = [...(state.claimedDailyDays || []), dayNum];
+      state.resources.gold = (state.resources.gold || 0) + (d.reward.gold || 0);
+      state.resources.wood = (state.resources.wood || 0) + (d.reward.wood || 0);
+      state.resources.stone = (state.resources.stone || 0) + (d.reward.stone || 0);
+      state.resources.food = (state.resources.food || 0) + (d.reward.food || 0);
+      state.resources.rubies = (state.resources.rubies || 0) + (d.reward.rubies || 0);
+      state.bpXp = (state.bpXp || 0) + (d.reward.bp || 50);
+      showToast(`Забран подарок за день ${dayNum}!`);
+      sound.success();
+      syncAndRender(false);
+    });
+  });
+
   container.querySelectorAll('[data-claim-quest]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const q = BALANCE.quests.find((x) => x.id === btn.dataset.claimQuest);
@@ -280,7 +457,8 @@ function renderSystemView(container) {
       state.claimedQuestIds = [...(state.claimedQuestIds || []), q.id];
       state.resources.gold = (state.resources.gold || 0) + q.rewardGold;
       state.resources.rubies = (state.resources.rubies || 0) + q.rewardRubies;
-      const msg = `Награда за задание "${q.title}": +🪙${q.rewardGold} и +💎${q.rewardRubies}!`;
+      state.bpXp = (state.bpXp || 0) + (q.rewardBp || 50);
+      const msg = `Награда за задание "${q.title}": +🪙${q.rewardGold} +💎${q.rewardRubies}!`;
       pushLog(state, msg);
       showToast(msg);
       sound.success();
@@ -301,46 +479,6 @@ function renderSystemView(container) {
     });
   });
 
-  container.querySelector('#btn-join-rally')?.addEventListener('click', () => {
-    const avail = state.troops.maceman || 0;
-    const take = Math.min(15, avail);
-    if (take <= 0) {
-      pushLog(state, 'Нет свободных булавщиков для присоединения к сбору.');
-      sound.alert();
-      syncAndRender(false);
-      return;
-    }
-    state.troops.maceman -= take;
-    state.rallyJoinedTroops = (state.rallyJoinedTroops || 0) + take;
-    state.allianceWarPoints = (state.allianceWarPoints || 0) + 15;
-    pushLog(state, `Вы присоединились к общему сбору альянса (+${take} бойцов, +15 очков войны).`);
-    sound.success();
-    syncAndRender(false);
-  });
-
-  container.querySelector('#btn-share-coord')?.addEventListener('click', () => {
-    const t = BALANCE.mapTargets.find((x) => x.id === state.selectedTargetId) || BALANCE.mapTargets[0];
-    state.allianceChat = [
-      { id: `c_${Date.now()}`, author: state.accountName || 'Лорд Stezzy', text: `Цель для атаки: ${t.name} (${BALANCE.realms[t.realm]?.name})` },
-      ...(state.allianceChat || [])
-    ];
-    pushLog(state, `Метка "${t.name}" отправлена в чат альянса.`);
-    sound.click();
-    syncAndRender(false);
-  });
-
-  container.querySelector('#btn-send-chat')?.addEventListener('click', () => {
-    const inp = container.querySelector('#alliance-chat-input');
-    const txt = (inp?.value || '').trim();
-    if (!txt) return;
-    state.allianceChat = [
-      { id: `c_${Date.now()}`, author: state.accountName || 'Лорд Stezzy', text: txt },
-      ...(state.allianceChat || [])
-    ];
-    sound.click();
-    syncAndRender(false);
-  });
-
   container.querySelectorAll('[data-market]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const offer = BALANCE.marketOffers.find((x) => x.id === btn.dataset.market);
@@ -351,15 +489,6 @@ function renderSystemView(container) {
       sound.success();
       syncAndRender(false);
     });
-  });
-
-  container.querySelector('#btn-save-profile')?.addEventListener('click', () => {
-    const val = (container.querySelector('#account-name-input')?.value || '').trim() || 'Лорд Stezzy';
-    state.accountName = val;
-    saveCurrentProfile(state);
-    pushLog(state, `Профиль сохранён под именем "${val}".`);
-    sound.success();
-    syncAndRender(false);
   });
 
   container.querySelectorAll('[data-load-profile]').forEach((btn) => {
@@ -387,44 +516,6 @@ function renderSystemView(container) {
     syncAndRender(false);
   });
 
-  container.querySelector('#btn-donate-alliance')?.addEventListener('click', () => {
-    if ((state.resources.gold || 0) < 50) {
-      pushLog(state, 'Не хватает монет для взноса в альянс (нужно 50).');
-      sound.alert();
-      syncAndRender(false);
-      return;
-    }
-    state.resources.gold -= 50;
-    state.allianceTreasury = (state.allianceTreasury || 0) + 50;
-    pushLog(state, 'Внесено 50 монет в казну альянса.');
-    sound.success();
-    syncAndRender(false);
-  });
-
-  container.querySelectorAll('[data-perk]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const pId = btn.dataset.perk;
-      const perk = BALANCE.alliancePerks.find((x) => x.id === pId);
-      if (!perk) return;
-      const set = new Set(state.activeAlliancePerks || []);
-      if (set.has(pId)) {
-        set.delete(pId);
-      } else {
-        if ((state.allianceTreasury || 0) < perk.costGold) {
-          pushLog(state, 'Недостаточно монет в казне альянса.');
-          sound.alert();
-          syncAndRender(false);
-          return;
-        }
-        state.allianceTreasury -= perk.costGold;
-        set.add(pId);
-      }
-      state.activeAlliancePerks = [...set];
-      sound.click();
-      syncAndRender(false);
-    });
-  });
-
   container.querySelector('#btn-quick-mode')?.addEventListener('click', () => {
     state.quickMode = !state.quickMode;
     pushLog(state, `Быстрый темп: ${state.quickMode ? 'включён' : 'выключен'}`);
@@ -436,6 +527,19 @@ function renderSystemView(container) {
     sound.enabled = !sound.enabled;
     state.soundEnabled = sound.enabled;
     if (sound.enabled) sound.click();
+    syncAndRender(false);
+  });
+
+  container.querySelector('#btn-compact-ui')?.addEventListener('click', () => {
+    state.compactUi = !state.compactUi;
+    document.body.classList.toggle('compact-ui', Boolean(state.compactUi));
+    sound.click();
+    syncAndRender(false);
+  });
+
+  container.querySelector('#btn-autosave')?.addEventListener('click', () => {
+    state.autoSaveEnabled = state.autoSaveEnabled === false ? true : false;
+    sound.click();
     syncAndRender(false);
   });
 
@@ -473,14 +577,7 @@ function renderSystemView(container) {
 
 function render() {
   try {
-    const now = Date.now();
     if (realmSelectEl) realmSelectEl.value = state.activeRealm;
-
-    if (taxBtn) {
-      const leftSec = Math.max(0, Math.ceil((state.taxCooldownUntil - now) / 1000));
-      taxBtn.disabled = leftSec > 0;
-      taxBtn.textContent = leftSec > 0 ? `Налоги (${leftSec}с)` : 'Налоги';
-    }
 
     renderHud(hudEl, state);
     renderTimerStrip(timerStripEl, state);
@@ -504,7 +601,7 @@ function render() {
       );
     } else if (activeTab === 'battle') {
       renderBattleView(viewEl, state, () => syncAndRender(false));
-    } else if (activeTab === 'command') {
+    } else if (activeTab === 'social') {
       renderCommandView(viewEl, state, () => syncAndRender(false));
     } else if (activeTab === 'system') {
       renderSystemView(viewEl);
@@ -536,16 +633,18 @@ realmSelectEl?.addEventListener('change', (e) => {
   syncAndRender(false);
 });
 
-taxBtn?.addEventListener('click', () => {
-  const now = Date.now();
-  if (now < state.taxCooldownUntil) return;
-  const keepLvl = state.slots.find((s) => s.type === 'keep')?.level || 1;
-  const gain = 110 + keepLvl * 45;
-  state.resources.gold += gain;
-  state.taxCooldownUntil = now + 45000;
-  pushLog(state, `Сборщик налогов принёс +${gain} монет.`);
-  sound.success();
-  syncAndRender(false);
+openShopBtn?.addEventListener('click', () => {
+  activeTab = 'system';
+  systemSubTab = 'shop';
+  sound.click();
+  render();
+});
+
+openEventsBtn?.addEventListener('click', () => {
+  activeTab = 'system';
+  systemSubTab = 'events';
+  sound.click();
+  render();
 });
 
 rubyBoostBtn?.addEventListener('click', () => {
