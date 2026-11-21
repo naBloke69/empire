@@ -1,12 +1,17 @@
 import { BALANCE } from '../config/balance.js';
 
-const STORAGE_KEY = 'e4k_royal_multiplayer_v8';
+const STORAGE_KEY = 'e4k_royal_edition_v9';
 
 export function createInitialState() {
   const now = Date.now();
   return {
     lastTickAt: now,
+    welcomed: false,
     accountName: 'Лорд Stezzy',
+    accountPasswordHash: 'royal123',
+    bpXp: 120,
+    bpVip: false,
+    claimedDailyDays: [],
     allianceName: 'Железный легион',
     allianceTreasury: 350,
     allianceWarPoints: 120,
@@ -14,6 +19,10 @@ export function createInitialState() {
     rallyJoinedTroops: 25,
     shieldUntil: 0,
     friends: ['Леди Валерия', 'Маршал Альдрик'],
+    globalChat: [
+      { id: 'g1', author: 'Леди Валерия', text: 'Всем привет! Кто идёт в поход на аванпосты?' },
+      { id: 'g2', author: 'Лорд Корсар', text: 'Мои стены крепки, но казна богата — пробуйте пробить!' }
+    ],
     allianceChat: [
       { id: 'c1', author: 'Маршал Альдрик', text: 'Готовим сборы на башни разбойников и держим аванпосты!' }
     ],
@@ -30,6 +39,8 @@ export function createInitialState() {
     equippedIds: ['eq_blade'],
     ownedDecorIds: ['dec_garden'],
     quickMode: false,
+    compactUi: false,
+    autoSaveEnabled: true,
     soundEnabled: true,
     taxCooldownUntil: 0,
     scoutedIds: [],
@@ -51,7 +62,7 @@ export function createInitialState() {
     trainQueue: null,
     marches: [],
     logs: [
-      { id: now, text: 'Королевство готово! Мультиплеер, рынок, рейды, сборы и квесты v8 запущены.' }
+      { id: now, text: 'Добро пожаловать в Empire: Four Kingdoms — Royal Edition v9!' }
     ],
     lastReport: null
   };
@@ -71,6 +82,7 @@ export function pushLog(state, text) {
 }
 
 export function saveState(state) {
+  if (state && state.autoSaveEnabled === false) return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (err) {

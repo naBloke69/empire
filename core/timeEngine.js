@@ -29,6 +29,7 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false, o
     const slot = state.slots.find((s) => s.id === q.slotId);
     if (slot) {
       slot.level = q.targetLevel;
+      state.bpXp = (state.bpXp || 0) + 35;
       const bName = BALANCE.buildings[slot.type]?.name || slot.type;
       const msg = `${bName} улучшен до ур. ${slot.level}!`;
       pushLog(state, msg);
@@ -50,6 +51,7 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false, o
       state.tools[tq.itemKey] = (state.tools[tq.itemKey] || 0) + tq.count;
       msg = `Изготовлено орудий: ${tq.count}x ${BALANCE.tools[tq.itemKey]?.name}`;
     }
+    state.bpXp = (state.bpXp || 0) + 20;
     if (msg) pushLog(state, msg);
     if (isLiveTick) {
       sound.success();
@@ -104,6 +106,7 @@ export function advanceSimulation(state, now = Date.now(), isLiveTick = false, o
       if (report.victory) {
         state.victoriesCount = (state.victoriesCount || 0) + 1;
         state.allianceWarPoints = (state.allianceWarPoints || 0) + 25;
+        state.bpXp = (state.bpXp || 0) + 55;
       } else {
         state.castleFireDamage = Math.min(5, (state.castleFireDamage || 0) + 1);
       }
